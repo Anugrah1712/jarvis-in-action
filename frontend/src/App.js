@@ -3,8 +3,17 @@ import axios from "axios";
 import "./App.css";
 import logo from "./bajajlogo.png";
 
-// Since frontend & backend are in same app now
-// we don't need full URL anymore
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
+
+// Since frontend & backend are in same Databricks app
 const BACKEND_URL = "";
 
 function App() {
@@ -13,13 +22,25 @@ function App() {
   const [conversationId, setConversationId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Auto scroll reference
   const messagesEndRef = useRef(null);
 
-  // Auto scroll effect
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Format numbers with commas
+  const formatValue = (value) => {
+    if (typeof value === "number") {
+      return value.toLocaleString();
+    }
+
+    if (!isNaN(value) && value !== null && value !== "") {
+      return Number(value).toLocaleString();
+    }
+
+    return value;
+  };
 
   const sendMessage = async () => {
     if (!prompt.trim()) return;
@@ -30,26 +51,26 @@ function App() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+
+    setPrompt(""); // ✅ Clear immediately
     setLoading(true);
 
     try {
       let response;
 
       if (!conversationId) {
-        response = await axios.post(`/start`, {
-          prompt: prompt,
-        });
-
+        response = await axios.post(`/start`, { prompt });
         setConversationId(response.data.conversation_id);
       } else {
         response = await axios.post(`/followup`, {
           conversation_id: conversationId,
-          prompt: prompt,
+          prompt,
         });
       }
 
-      const genieResponses = response.data.response;
+      console.log("GENIE RESPONSE:", response.data);
 
+      const genieResponses = response.data.response;
       let formatted = [];
 
       genieResponses.forEach((res) => {
@@ -70,6 +91,15 @@ function App() {
             generated_code: res.generated_code,
           });
         }
+
+        // Optional chart support if backend sends chart type
+        if (res.type === "chart") {
+          formatted.push({
+            role: "assistant",
+            type: "chart",
+            data: res.data,
+          });
+        }
       });
 
       setMessages((prev) => [...prev, ...formatted]);
@@ -87,7 +117,6 @@ function App() {
       ]);
     }
 
-    setPrompt("");
     setLoading(false);
   };
 
@@ -108,6 +137,26 @@ function App() {
       );
     }
 
+    // Chart rendering
+    if (msg.type === "chart" && msg.data?.length > 0) {
+      const keys = Object.keys(msg.data[0]);
+
+      return (
+        <div key={index} className="assistant bubble">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={msg.data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={keys[0]} />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey={keys[1]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Table rendering
     if (msg.type === "table") {
       return (
         <div key={index} className="assistant bubble">
@@ -132,7 +181,17 @@ function App() {
                   msg.data.map((row, i) => (
                     <tr key={i}>
                       {Object.values(row).map((val, j) => (
-                        <td key={j}>{val}</td>
+                        <td
+                          key={j}
+                          style={{
+                            textAlign:
+                              typeof val === "number" || !isNaN(val)
+                                ? "right"
+                                : "left",
+                          }}
+                        >
+                          {formatValue(val)}
+                        </td>
                       ))}
                     </tr>
                   ))}
@@ -157,9 +216,7 @@ function App() {
     <div className="app-container">
       <header className="header">
         <img src={logo} className="logo-left" alt="logo" />
-
         <h1 className="title">JARVIS</h1>
-
         <div className="tagline">
           Enterprise Data Assistant powered by Databricks Genie
         </div>
@@ -182,7 +239,6 @@ function App() {
           </div>
         )}
 
-        {/* Auto-scroll target */}
         <div ref={messagesEndRef} />
       </div>
 
@@ -191,7 +247,7 @@ function App() {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Ask Jarvis something magical..."
-          onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
 
         <button onClick={sendMessage}>Send</button>

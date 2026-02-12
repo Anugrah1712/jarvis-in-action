@@ -1,3 +1,4 @@
+/* app.css */
 body {
   margin: 0;
   padding: 0;
@@ -10,7 +11,6 @@ body {
 
   color: white;
 }
-
 
 .app-container {
   max-width: 1100px;
@@ -33,22 +33,10 @@ body {
   border-radius: 0 0 10px 10px;
 }
 
-.branding {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .logo-left {
   width: 170px;
   height: 75px;
   justify-self: start;
-}
-
-h1 {
-  margin: 0;
-  color: #38bdf8;
-  letter-spacing: 1px;
 }
 
 .title {
@@ -65,7 +53,7 @@ h1 {
   justify-self: end;
 }
 
-/* CHAT CARD */
+/* CHAT AREA */
 
 .chat-area {
   flex: 1;
@@ -89,24 +77,22 @@ h1 {
   margin-top: 160px;
   font-size: 20px;
   color: #cbd5e1;
-  letter-spacing: 0.5px;
 }
 
-/* CHAT BUBBLES */
+/* BUBBLES */
 
 .bubble {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 14px;
-  margin: 10px 0;
+  margin: 12px 0;
   max-width: 80%;
-  animation: fadeIn 0.4s ease-in-out;
-  line-height: 1.5;
+  animation: fadeIn 0.3s ease-in-out;
+  line-height: 1.6;
 }
 
 .user {
   background: linear-gradient(135deg, #0284c7, #0ea5e9);
   margin-left: auto;
-  color: white;
   border-bottom-right-radius: 4px;
 }
 
@@ -122,14 +108,13 @@ h1 {
   opacity: 0.8;
 }
 
-/* INPUT BAR */
+/* INPUT */
 
 .input-box {
   display: flex;
   padding: 15px 20px;
   margin: 10px 20px 20px 20px;
   background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(10px);
   border-radius: 14px;
   border: 1px solid #1e293b;
 }
@@ -145,10 +130,6 @@ input {
   color: white;
 }
 
-input::placeholder {
-  color: #64748b;
-}
-
 button {
   margin-left: 12px;
   padding: 12px 24px;
@@ -158,15 +139,13 @@ button {
   border-radius: 10px;
   cursor: pointer;
   font-weight: bold;
-  transition: all 0.3s ease;
 }
 
 button:hover {
   transform: scale(1.05);
-  background: linear-gradient(135deg, #0284c7, #0369a1);
 }
 
-/* TABLE DESIGN */
+/* TABLE */
 
 .table-container {
   overflow-x: auto;
@@ -177,24 +156,29 @@ button:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  background: #0f172a;
-  color: white;
-  border-radius: 10px;
+  background: #0b1220;
+  font-size: 14px;
 }
 
 th {
-  background: #020617;
-  padding: 10px;
-  text-align: left;
+  background: #111827;
+  padding: 12px;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #38bdf8;
 }
 
 td {
-  padding: 8px;
+  padding: 10px;
   border-bottom: 1px solid #1e293b;
 }
 
+tr:hover {
+  background: rgba(14, 165, 233, 0.08);
+}
+
 .sql-box {
-  margin-top: 10px;
+  margin-top: 12px;
   background: #020617;
   padding: 10px;
   border-radius: 8px;
@@ -205,7 +189,7 @@ pre {
   overflow-x: auto;
 }
 
-/* SCROLLBAR */
+/* Scrollbar */
 
 .chat-area::-webkit-scrollbar {
   width: 6px;
@@ -216,12 +200,12 @@ pre {
   border-radius: 10px;
 }
 
-/* ANIMATIONS */
+/* Animation */
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
