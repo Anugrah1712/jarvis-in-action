@@ -188,32 +188,48 @@ const detectChartType = (data) => {
 
         {/* TABLE */}
         <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                {keys.map((col, i) => (
-                  <th key={i}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {msg.data.map((row, i) => (
-                <tr key={i}>
-                  {keys.map((key, j) => (
-                    <td
-                      key={j}
-                      style={{
-                        textAlign: !isNaN(row[key]) ? "right" : "left",
-                      }}
-                    >
-                      {formatValue(row[key])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  <table>
+    <thead>
+      <tr>
+        {keys.map((col, i) => {
+          const isNumeric =
+            msg.data.length > 0 &&
+            !isNaN(msg.data[0][col]) &&
+            msg.data[0][col] !== null;
+
+          return (
+            <th
+              key={i}
+              className={isNumeric ? "numeric-column" : ""}
+            >
+              {col}
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
+
+    <tbody>
+      {msg.data.map((row, i) => (
+        <tr key={i}>
+          {keys.map((key, j) => {
+            const isNumeric =
+              !isNaN(row[key]) && row[key] !== null;
+
+            return (
+              <td
+                key={j}
+                className={isNumeric ? "numeric-column" : ""}
+              >
+                {formatValue(row[key])}
+              </td>
+            );
+          })}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
         {/* SQL */}
         {msg.generated_code && (
