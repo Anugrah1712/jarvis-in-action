@@ -230,7 +230,17 @@ const detectChartType = (data) => {
               {chartType === "line" && (
                 <LineChart data={msg.data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey={categoryKey} />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-IN", {
+                        month: "short",
+                        year: "2-digit",
+                      });
+                    }}
+                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                  />
                   <YAxis />
                   <Tooltip />
                   <Legend />
@@ -251,7 +261,17 @@ const detectChartType = (data) => {
               {chartType === "bar" && (
                 <BarChart data={msg.data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey={categoryKey} />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-IN", {
+                        month: "short",
+                        year: "2-digit",
+                      });
+                    }}
+                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                  />
                   <YAxis />
                   <Tooltip />
                   <Legend />
