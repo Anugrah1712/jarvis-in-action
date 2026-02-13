@@ -1,4 +1,7 @@
-/* app.css */
+/* ============================= */
+/* GLOBAL */
+/* ============================= */
+
 body {
   margin: 0;
   font-family: "Inter", sans-serif;
@@ -14,6 +17,9 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+/* ============================= */
+/* APP CONTAINER */
+/* ============================= */
 
 .app-container {
   height: 100vh;
@@ -27,14 +33,15 @@ body {
   position: absolute;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%);
   top: -150px;
   right: -150px;
   z-index: -1;
 }
 
-
+/* ============================= */
 /* HEADER */
+/* ============================= */
 
 .header {
   display: flex;
@@ -67,8 +74,9 @@ body {
   margin-top: 5px;
 }
 
-
+/* ============================= */
 /* CHAT AREA */
+/* ============================= */
 
 .chat-area {
   flex: 1;
@@ -85,31 +93,40 @@ body {
 
 .welcome {
   text-align: center;
-  margin-top: 160px;
+  margin-top: 140px;
   font-size: 20px;
   color: #cbd5e1;
 }
 
+/* ============================= */
 /* BUBBLES */
+/* ============================= */
 
 .bubble {
   padding: 14px 18px;
   margin-bottom: 15px;
   border-radius: 18px;
-  max-width: 70%;
+  max-width: 75%;
   font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
-  animation: fadeIn 0.3s ease-in-out;
+  animation: fadeSlide 0.3s ease forwards;
+  opacity: 0;
 }
 
-.chart-wrapper {
-  width: 100%;
-  height: 300px;
-  margin-bottom: 20px;
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* USER - RIGHT SIDE */
+/* USER MESSAGE */
+
 .user {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   align-self: flex-end;
@@ -117,7 +134,8 @@ body {
   color: white;
 }
 
-/* ASSISTANT - LEFT SIDE */
+/* ASSISTANT MESSAGE */
+
 .assistant {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -126,12 +144,7 @@ body {
   color: white;
 }
 
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
+/* Typing animation */
 
 .typing::after {
   content: " .";
@@ -144,8 +157,98 @@ body {
   66% { content: " ..."; }
 }
 
+/* ============================= */
+/* TABLE */
+/* ============================= */
 
+.table-container {
+  overflow-x: auto;
+  margin-top: 15px;
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #0b1220;
+  font-size: 14px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th {
+  background: #111827;
+  padding: 12px;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #1e293b;
+}
+
+tr:hover {
+  background: rgba(14, 165, 233, 0.08);
+}
+
+/* ============================= */
+/* CHART */
+/* ============================= */
+
+.chart-wrapper {
+  width: 100%;
+  height: 350px;
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.3s ease;
+  animation: chartFade 0.5s ease;
+}
+
+.chart-wrapper:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes chartFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.recharts-tooltip-wrapper {
+  font-size: 12px;
+}
+
+/* ============================= */
+/* SQL BOX */
+/* ============================= */
+
+.sql-box {
+  margin-top: 15px;
+  background: #020617;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+pre {
+  color: #38bdf8;
+  overflow-x: auto;
+}
+
+/* ============================= */
 /* INPUT */
+/* ============================= */
 
 .input-box {
   display: flex;
@@ -182,56 +285,9 @@ body {
   box-shadow: 0 6px 15px rgba(56, 189, 248, 0.4);
 }
 
-/* TABLE */
-
-.table-container {
-  overflow-x: auto;
-  margin-top: 10px;
-  border-radius: 10px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #0b1220;
-  font-size: 14px;
-}
-
-th {
-  background: #111827;
-  padding: 12px;
-  text-transform: uppercase;
-  font-size: 12px;
-  color: #38bdf8;
-}
-
-td {
-  padding: 10px;
-  border-bottom: 1px solid #1e293b;
-}
-
-tr:hover {
-  background: rgba(14, 165, 233, 0.08);
-}
-
-.sql-box {
-  margin-top: 15px;
-  background: #020617;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-}
-
-.recharts-tooltip-wrapper {
-  font-size: 12px;
-}
-
-pre {
-  color: #38bdf8;
-  overflow-x: auto;
-}
-
-/* Scrollbar */
+/* ============================= */
+/* SCROLLBAR */
+/* ============================= */
 
 .chat-area::-webkit-scrollbar {
   width: 6px;
@@ -242,15 +298,52 @@ pre {
   border-radius: 10px;
 }
 
-/* Animation */
+/* ============================= */
+/* MOBILE RESPONSIVE */
+/* ============================= */
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+@media (max-width: 768px) {
+
+  .bubble {
+    max-width: 95%;
+    font-size: 13px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .chat-area {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .header {
+    padding: 15px;
+  }
+
+  .logo-right {
+    height: 50px;
+    width: 100px;
+    right: 15px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .input-box {
+    padding: 12px;
+    flex-direction: column;
+  }
+
+  .input-box input {
+    margin-bottom: 8px;
+    width: 100%;
+  }
+
+  .input-box button {
+    width: 100%;
+  }
+
+  .chart-wrapper {
+    height: 280px;
+    padding: 10px;
   }
 }

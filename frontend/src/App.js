@@ -147,149 +147,142 @@ const detectChartType = (data) => {
 };
 
   const renderMessage = (msg, index) => {
-    if (msg.role === "user") {
-      return (
-        <div key={index} className="user bubble">
-          {msg.content}
-        </div>
-      );
-    }
+  if (msg.role === "user") {
+    return (
+      <div key={index} className="user bubble fade-in">
+        {msg.content}
+      </div>
+    );
+  }
 
-    if (msg.type === "text") {
-      return (
-        <div key={index} className="assistant bubble">
-          {msg.content}
-        </div>
-      );
-    }
+  if (msg.type === "text") {
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        {msg.content}
+      </div>
+    );
+  }
 
-    // Chart rendering
-    if (msg.type === "chart" && msg.data?.length > 0) {
-      const keys = Object.keys(msg.data[0]);
+  if (msg.type === "table" && msg.data?.length > 0) {
+    const keys = Object.keys(msg.data[0]);
 
-      return (
-        <div key={index} className="assistant bubble">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={msg.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={keys[0]} />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey={keys[1]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      );
-    }
+    const numericKeys = keys.filter((k) =>
+      !isNaN(msg.data[0][k]) && msg.data[0][k] !== null
+    );
 
-    // Table rendering
-    // Table + Smart Chart Rendering
-if (msg.type === "table" && msg.data?.length > 0) {
-  const chartType = detectChartType(msg.data);
+    const categoryKey = keys.find((k) => !numericKeys.includes(k));
 
-  const keys = Object.keys(msg.data[0]);
-  const numericKey = keys.find((k) => isNumeric(msg.data[0][k]));
-  const categoryKey = keys.find((k) => k !== numericKey);
+    const chartType = detectChartType(msg.data);
 
-  return (
-    <div key={index} className="assistant bubble">
-      {msg.description && (
-        <div className="query-title">{msg.description}</div>
-      )}
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        {msg.description && (
+          <div className="query-title">{msg.description}</div>
+        )}
 
-      {/* AUTO CHART */}
-      {chartType && (
-        <div className="chart-wrapper">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === "line" && (
-              <LineChart data={msg.data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={categoryKey} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey={numericKey}
-                  stroke="#38bdf8"
-                  strokeWidth={3}
-                />
-              </LineChart>
-            )}
-
-            {chartType === "bar" && (
-              <BarChart data={msg.data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={categoryKey} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey={numericKey} fill="#6366f1" />
-              </BarChart>
-            )}
-
-            {chartType === "pie" && (
-              <PieChart>
-                <Tooltip />
-                <Legend />
-                <Pie
-                  data={msg.data}
-                  dataKey={numericKey}
-                  nameKey={categoryKey}
-                  outerRadius={100}
-                  fill="#38bdf8"
-                  label
-                />
-              </PieChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* TABLE */}
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              {keys.map((col, i) => (
-                <th key={i}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {msg.data.map((row, i) => (
-              <tr key={i}>
-                {keys.map((key, j) => (
-                  <td
-                    key={j}
-                    style={{
-                      textAlign: isNumeric(row[key])
-                        ? "right"
-                        : "left",
-                    }}
-                  >
-                    {formatValue(row[key])}
-                  </td>
+        {/* TABLE */}
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                {keys.map((col, i) => (
+                  <th key={i}>{col}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {msg.data.map((row, i) => (
+                <tr key={i}>
+                  {keys.map((key, j) => (
+                    <td
+                      key={j}
+                      style={{
+                        textAlign: !isNaN(row[key]) ? "right" : "left",
+                      }}
+                    >
+                      {formatValue(row[key])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* SQL */}
+        {msg.generated_code && (
+          <details className="sql-box">
+            <summary>View Generated SQL</summary>
+            <pre>{msg.generated_code}</pre>
+          </details>
+        )}
+
+        {/* CHART AFTER TABLE */}
+        {chartType && categoryKey && numericKeys.length > 0 && (
+          <div className="chart-wrapper fade-in">
+            <ResponsiveContainer width="100%" height={350}>
+              {chartType === "line" && (
+                <LineChart data={msg.data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={categoryKey} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {numericKeys.map((key, i) => (
+                    <Line
+                      key={i}
+                      type="monotone"
+                      dataKey={key}
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 8 }}
+                      animationDuration={1000}
+                    />
+                  ))}
+                </LineChart>
+              )}
+
+              {chartType === "bar" && (
+                <BarChart data={msg.data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={categoryKey} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {numericKeys.map((key, i) => (
+                    <Bar
+                      key={i}
+                      dataKey={key}
+                      animationDuration={1000}
+                      radius={[6, 6, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              )}
+
+              {chartType === "pie" && (
+                <PieChart>
+                  <Tooltip />
+                  <Legend />
+                  <Pie
+                    data={msg.data}
+                    dataKey={numericKeys[0]}
+                    nameKey={categoryKey}
+                    outerRadius={120}
+                    label
+                    animationDuration={1000}
+                  />
+                </PieChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
+    );
+  }
 
-      {msg.generated_code && (
-        <details className="sql-box">
-          <summary>View Generated SQL</summary>
-          <pre>{msg.generated_code}</pre>
-        </details>
-      )}
-    </div>
-  );
-}
-
-    return null;
-  };
+  return null;
+};
 
   return (
     <div className="app-container">
