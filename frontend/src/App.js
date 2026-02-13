@@ -6,11 +6,16 @@ import logo from "./bajajlogo.png";
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 
 // Since frontend & backend are in same Databricks app
@@ -119,6 +124,27 @@ function App() {
 
     setLoading(false);
   };
+  const isNumeric = (value) =>
+  !isNaN(value) && value !== null && value !== "";
+
+const isDate = (value) =>
+  typeof value === "string" && !isNaN(Date.parse(value));
+
+const detectChartType = (data) => {
+  if (!data || data.length === 0) return null;
+
+  const keys = Object.keys(data[0]);
+  const numericKey = keys.find((k) => isNumeric(data[0][k]));
+  const categoryKey = keys.find((k) => k !== numericKey);
+
+  if (!numericKey || !categoryKey) return null;
+
+  if (data.length === 1) return "pie";
+
+  if (isDate(data[0][categoryKey])) return "line";
+
+  return "bar";
+};
 
   const renderMessage = (msg, index) => {
     if (msg.role === "user") {
@@ -157,57 +183,110 @@ function App() {
     }
 
     // Table rendering
-    if (msg.type === "table") {
-      return (
-        <div key={index} className="assistant bubble">
-          {msg.description && (
-            <div className="query-title">{msg.description}</div>
-          )}
+    // Table + Smart Chart Rendering
+if (msg.type === "table" && msg.data?.length > 0) {
+  const chartType = detectChartType(msg.data);
 
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  {msg.data &&
-                    msg.data.length > 0 &&
-                    Object.keys(msg.data[0]).map((col, i) => (
-                      <th key={i}>{col}</th>
-                    ))}
-                </tr>
-              </thead>
+  const keys = Object.keys(msg.data[0]);
+  const numericKey = keys.find((k) => isNumeric(msg.data[0][k]));
+  const categoryKey = keys.find((k) => k !== numericKey);
 
-              <tbody>
-                {msg.data &&
-                  msg.data.map((row, i) => (
-                    <tr key={i}>
-                      {Object.values(row).map((val, j) => (
-                        <td
-                          key={j}
-                          style={{
-                            textAlign:
-                              typeof val === "number" || !isNaN(val)
-                                ? "right"
-                                : "left",
-                          }}
-                        >
-                          {formatValue(val)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+  return (
+    <div key={index} className="assistant bubble">
+      {msg.description && (
+        <div className="query-title">{msg.description}</div>
+      )}
 
-          {msg.generated_code && (
-            <details className="sql-box">
-              <summary>View Generated SQL</summary>
-              <pre>{msg.generated_code}</pre>
-            </details>
-          )}
+      {/* AUTO CHART */}
+      {chartType && (
+        <div className="chart-wrapper">
+          <ResponsiveContainer width="100%" height="100%">
+            {chartType === "line" && (
+              <LineChart data={msg.data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey={categoryKey} />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey={numericKey}
+                  stroke="#38bdf8"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            )}
+
+            {chartType === "bar" && (
+              <BarChart data={msg.data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey={categoryKey} />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey={numericKey} fill="#6366f1" />
+              </BarChart>
+            )}
+
+            {chartType === "pie" && (
+              <PieChart>
+                <Tooltip />
+                <Legend />
+                <Pie
+                  data={msg.data}
+                  dataKey={numericKey}
+                  nameKey={categoryKey}
+                  outerRadius={100}
+                  fill="#38bdf8"
+                  label
+                />
+              </PieChart>
+            )}
+          </ResponsiveContainer>
         </div>
-      );
-    }
+      )}
+
+      {/* TABLE */}
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              {keys.map((col, i) => (
+                <th key={i}>{col}</th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {msg.data.map((row, i) => (
+              <tr key={i}>
+                {keys.map((key, j) => (
+                  <td
+                    key={j}
+                    style={{
+                      textAlign: isNumeric(row[key])
+                        ? "right"
+                        : "left",
+                    }}
+                  >
+                    {formatValue(row[key])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {msg.generated_code && (
+        <details className="sql-box">
+          <summary>View Generated SQL</summary>
+          <pre>{msg.generated_code}</pre>
+        </details>
+      )}
+    </div>
+  );
+}
 
     return null;
   };
@@ -215,7 +294,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <img src={logo} className="logo-left" alt="logo" />
+        <img src={logo} className="logo-right" alt="logo" />
         <h1 className="title">JARVIS</h1>
         <div className="tagline">
           Enterprise Data Assistant powered by Databricks Genie

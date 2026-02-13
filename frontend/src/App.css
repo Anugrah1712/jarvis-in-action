@@ -44,11 +44,12 @@ body {
   position: relative;
 }
 
-.logo-left {
+.logo-right {
   position: absolute;
-  left: 30px;
+  right: 30px;
   top: 20px;
-  height: 40px;
+  height: 70px;
+  width: 140px;
 }
 
 .title {
@@ -99,6 +100,13 @@ body {
   font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.chart-wrapper {
+  width: 100%;
+  height: 300px;
+  margin-bottom: 20px;
 }
 
 /* USER - RIGHT SIDE */
@@ -207,10 +215,15 @@ tr:hover {
 }
 
 .sql-box {
-  margin-top: 12px;
+  margin-top: 15px;
   background: #020617;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.recharts-tooltip-wrapper {
+  font-size: 12px;
 }
 
 pre {
