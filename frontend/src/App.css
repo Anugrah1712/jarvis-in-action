@@ -103,13 +103,12 @@ body {
 /* ============================= */
 
 .bubble {
-  padding: 14px 18px;
-  margin-bottom: 15px;
-  border-radius: 18px;
-  max-width: 75%;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  width: 100%;          /* full width */
   font-size: 14px;
-  line-height: 1.5;
-  word-wrap: break-word;
+  line-height: 1.6;
   animation: fadeSlide 0.3s ease forwards;
   opacity: 0;
 }
@@ -137,11 +136,12 @@ body {
 /* ASSISTANT MESSAGE */
 
 .assistant {
-  background: rgba(255, 255, 255, 0.06);
+  align-self: stretch;   /* full width */
+  width: 100%;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  align-self: flex-start;
-  border-bottom-left-radius: 6px;
-  color: white;
+  border-radius: 16px;
 }
 
 /* Typing animation */
@@ -162,36 +162,38 @@ body {
 /* ============================= */
 
 .table-container {
-  overflow-x: auto;
-  margin-top: 15px;
+  width: 100%;
+  margin-top: 20px;
   border-radius: 12px;
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   background: #0b1220;
-  font-size: 14px;
   border-radius: 12px;
   overflow: hidden;
 }
 
 th {
+  padding: 14px;
   background: #111827;
-  padding: 12px;
-  text-transform: uppercase;
-  font-size: 12px;
   color: #38bdf8;
+  font-size: 12px;
+  text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-align: left;
 }
 
 td {
-  padding: 10px;
+  padding: 14px;
   border-bottom: 1px solid #1e293b;
+  font-size: 14px;
 }
 
 tr:hover {
-  background: rgba(14, 165, 233, 0.08);
+  background: rgba(56, 189, 248, 0.06);
 }
 
 /* ============================= */
@@ -200,13 +202,11 @@ tr:hover {
 
 .chart-wrapper {
   width: 100%;
-  height: 350px;
-  margin-top: 20px;
-  padding: 15px;
+  height: 380px;
+  margin-top: 30px;
+  padding: 20px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
-  transition: all 0.3s ease;
-  animation: chartFade 0.5s ease;
 }
 
 .chart-wrapper:hover {

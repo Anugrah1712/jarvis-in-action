@@ -36,16 +36,22 @@ function App() {
 
   // Format numbers with commas
   const formatValue = (value) => {
-    if (typeof value === "number") {
-      return value.toLocaleString();
-    }
+  // Format numbers
+  if (!isNaN(value) && value !== null && value !== "") {
+    return Number(value).toLocaleString();
+  }
 
-    if (!isNaN(value) && value !== null && value !== "") {
-      return Number(value).toLocaleString();
-    }
+  // Format dates
+  if (typeof value === "string" && !isNaN(Date.parse(value))) {
+    const date = new Date(value);
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+    });
+  }
 
-    return value;
-  };
+  return value;
+};
 
   const sendMessage = async () => {
     if (!prompt.trim()) return;
