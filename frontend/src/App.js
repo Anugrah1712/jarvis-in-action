@@ -140,16 +140,31 @@ const detectChartType = (data) => {
   if (!data || data.length === 0) return null;
 
   const keys = Object.keys(data[0]);
-  const numericKey = keys.find((k) => isNumeric(data[0][k]));
-  const categoryKey = keys.find((k) => k !== numericKey);
 
-  if (!numericKey || !categoryKey) return null;
+  const numericKeys = keys.filter((k) =>
+    isNumeric(data[0][k])
+  );
 
+  const categoryKey = keys.find((k) => !numericKeys.includes(k));
+
+  if (!categoryKey || numericKeys.length === 0) return null;
+
+  // Single row → Pie
   if (data.length === 1) return "pie";
 
-  if (isDate(data[0][categoryKey])) return "line";
+  // Multiple metrics → Line (better for comparison)
+  if (numericKeys.length > 1) return "line";
 
-  return "bar";
+  // Date-based data
+  if (isDate(data[0][categoryKey])) {
+    return data.length > 12 ? "line" : "bar";
+  }
+
+  // Few categories → Bar
+  if (data.length <= 12) return "bar";
+
+  // Many categories → Line
+  return "line";
 };
 
   const renderMessage = (msg, index) => {
@@ -247,13 +262,16 @@ const detectChartType = (data) => {
                 <LineChart data={msg.data}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="month"
+                    dataKey={categoryKey}
                     tickFormatter={(value) => {
-                      const date = new Date(value);
-                      return date.toLocaleDateString("en-IN", {
-                        month: "short",
-                        year: "2-digit",
-                      });
+                      if (isDate(value)) {
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-IN", {
+                          month: "short",
+                          year: "2-digit",
+                        });
+                      }
+                      return value;
                     }}
                     tick={{ fill: "#cbd5e1", fontSize: 12 }}
                   />
@@ -278,13 +296,16 @@ const detectChartType = (data) => {
                 <BarChart data={msg.data}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="month"
+                    dataKey={categoryKey}
                     tickFormatter={(value) => {
-                      const date = new Date(value);
-                      return date.toLocaleDateString("en-IN", {
-                        month: "short",
-                        year: "2-digit",
-                      });
+                      if (isDate(value)) {
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-IN", {
+                          month: "short",
+                          year: "2-digit",
+                        });
+                      }
+                      return value;
                     }}
                     tick={{ fill: "#cbd5e1", fontSize: 12 }}
                   />
