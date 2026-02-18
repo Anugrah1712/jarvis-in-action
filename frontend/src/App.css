@@ -422,3 +422,23 @@ body::-webkit-scrollbar {
   color: white;
   transform: translateY(-2px);
 }
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.download-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s ease;
+}
+
+.download-btn:hover {
+  background: #1d4ed8;
+}

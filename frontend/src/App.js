@@ -74,7 +74,7 @@ function App() {
 
       if (!conversationId) {
         response = await axios.post(`/start`, { prompt: textToSend },{
-          timeout:180000,
+          timeout:600000,
         });
         setConversationId(response.data.conversation_id);
       } else {
@@ -82,7 +82,7 @@ function App() {
           conversation_id: conversationId,
           prompt: textToSend,
         },{
-          timeout:180000,
+          timeout:600000,
         });
       }
 
@@ -204,64 +204,31 @@ const detectChartType = (data) => {
   return "line";
 };
 
-// const sendMessageFromSuggestion = async (text) => {
-//   setPrompt(text);
-  
-//   const userMessage = {
-//     role: "user",
-//     content: text,
-//   };
+const downloadCSV = (data, filename = "jarvis_data.csv") => {
+  if (!data || data.length === 0) return;
 
-//   setMessages((prev) => [...prev, userMessage]);
-//   setLoading(true);
+  const headers = Object.keys(data[0]);
 
-//   try {
-//     let response;
+  const csvRows = [
+    headers.join(","), // header row
+    ...data.map(row =>
+      headers.map(field => {
+        const value = row[field] ?? "";
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(",")
+    )
+  ];
 
-//     if (!conversationId) {
-//       response = await axios.post(`/start`, { prompt: text }, {
-//         timeout: 300000,
-//       });
-//       setConversationId(response.data.conversation_id);
-//     } else {
-//       response = await axios.post(`/followup`, {
-//         conversation_id: conversationId,
-//         prompt: text,
-//       }, {
-//         timeout: 300000,
-//       });
-//     }
+  const csvString = csvRows.join("\n");
 
-//     const genieResponses = response.data.response;
-//     let formatted = [];
-
-//     genieResponses.forEach((res) => {
-//       if (res.type === "text") {
-//         formatted.push({
-//           role: "assistant",
-//           type: "text",
-//           content: res.content,
-//         });
-//       }
-
-//       if (res.type === "query") {
-//         formatted.push({
-//           role: "assistant",
-//           type: "table",
-//           description: res.description,
-//           data: res.data,
-//           generated_code: res.generated_code,
-//         });
-//       }
-//     });
-
-//     setMessages((prev) => [...prev, ...formatted]);
-//   } catch (error) {
-//     console.error(error);
-//   }
-
-//   setLoading(false);
-// };
+  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const BAR_COLORS = ["#38bdf8", "#2563eb", "#0ea5e9", "#1d4ed8"];
 
@@ -313,50 +280,65 @@ const detectChartType = (data) => {
           <div className="query-title">{msg.description}</div>
         )}
 
+        <div className="table-actions">
+          <button
+            className="download-btn"
+            onClick={() =>
+              downloadCSV(
+                msg.data,
+                `jarvis_export_${Date.now()}.csv`
+              )
+            }
+          >
+            ⬇ Download CSV
+          </button>
+        </div>
+
+
         {/* TABLE */}
         <div className="table-container">
-  <table>
-    <thead>
-      <tr>
-        {keys.map((col, i) => {
-          const isNumeric =
-            msg.data.length > 0 &&
-            !isNaN(msg.data[0][col]) &&
-            msg.data[0][col] !== null;
+          <table>
+            <thead>
+              <tr>
+                {keys.map((col, i) => {
+                  const isNumeric =
+                    msg.data.length > 0 &&
+                    !isNaN(msg.data[0][col]) &&
+                    msg.data[0][col] !== null;
 
-          return (
-            <th
-              key={i}
-              className={isNumeric ? "numeric-column" : ""}
-            >
-              {col}
-            </th>
-          );
-        })}
-      </tr>
-    </thead>
+                  return (
+                    <th
+                      key={i}
+                      className={isNumeric ? "numeric-column" : ""}
+                    >
+                      {col}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
 
-    <tbody>
-      {msg.data.map((row, i) => (
-        <tr key={i}>
-          {keys.map((key, j) => {
-            const isNumeric =
-              !isNaN(row[key]) && row[key] !== null;
+            <tbody>
+              {msg.data.map((row, i) => (
+                <tr key={i}>
+                  {keys.map((key, j) => {
+                    const isNumeric =
+                      !isNaN(row[key]) && row[key] !== null;
 
-            return (
-              <td
-                key={j}
-                className={isNumeric ? "numeric-column" : ""}
-              >
-                {formatValue(row[key])}
-              </td>
-            );
-          })}
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+                    return (
+                      <td
+                        key={j}
+                        className={isNumeric ? "numeric-column" : ""}
+                      >
+                        {formatValue(row[key])}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {/* SQL */}
         {msg.generated_code && (
