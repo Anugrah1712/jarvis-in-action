@@ -354,3 +354,19 @@ pre {
 body::-webkit-scrollbar {
   display: none;
 }
+
+.suggestion-chip {
+  margin-top: 10px;
+  padding: 10px 16px;
+  border-radius: 18px;
+  background: #1e293b;
+  color: #38bdf8;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s ease;
+}
+
+.suggestion-chip:hover {
+  background: #334155;
+  transform: translateY(-2px);
+}

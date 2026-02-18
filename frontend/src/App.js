@@ -70,12 +70,16 @@ function App() {
       let response;
 
       if (!conversationId) {
-        response = await axios.post(`/start`, { prompt });
+        response = await axios.post(`/start`, { prompt },{
+          timeout:180000,
+        });
         setConversationId(response.data.conversation_id);
       } else {
         response = await axios.post(`/followup`, {
           conversation_id: conversationId,
           prompt,
+        },{
+          timeout:180000,
         });
       }
 
@@ -86,11 +90,30 @@ function App() {
 
       genieResponses.forEach((res) => {
         if (res.type === "text") {
-          formatted.push({
-            role: "assistant",
-            type: "text",
-            content: res.content,
-          });
+          const content = res.content;
+
+          const isSuggestion =
+            content.trim().endsWith("?") &&
+            (
+              content.toLowerCase().includes("would you") ||
+              content.toLowerCase().includes("prefer") ||
+              content.toLowerCase().includes("want to") ||
+              content.toLowerCase().includes("like to")
+            );
+
+          if (isSuggestion) {
+            formatted.push({
+              role: "assistant",
+              type: "suggestion",
+              content,
+            });
+          } else {
+            formatted.push({
+              role: "assistant",
+              type: "text",
+              content,
+            });
+          }
         }
 
         if (res.type === "query") {
@@ -117,15 +140,27 @@ function App() {
     } catch (error) {
       console.error("API Error:", error);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          type: "text",
-          content:
-            "⚠️ Sorry, Jarvis is having trouble connecting to Genie Backend.",
-        },
-      ]);
+      if (error.code === "ECONNABORTED") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            type: "text",
+            content:
+              "⏳ Genie is processing a complex query. Please wait and try again.",
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            type: "text",
+            content:
+              "⚠️ Unable to reach Genie backend. Please check connection.",
+          },
+        ]);
+      }
     }
 
     setLoading(false);
@@ -149,23 +184,76 @@ const detectChartType = (data) => {
 
   if (!categoryKey || numericKeys.length === 0) return null;
 
-  // Single row → Pie
+  const isDateCategory = isDate(data[0][categoryKey]);
+
   if (data.length === 1) return "pie";
 
-  // Multiple metrics → Line (better for comparison)
-  if (numericKeys.length > 1) return "line";
+  if (isDateCategory) return "line";
 
-  // Date-based data
-  if (isDate(data[0][categoryKey])) {
-    return data.length > 12 ? "line" : "bar";
-  }
+  if (!isDateCategory && numericKeys.length >= 1)
+    return "bar";
 
-  // Few categories → Bar
-  if (data.length <= 12) return "bar";
-
-  // Many categories → Line
   return "line";
 };
+const sendMessageFromSuggestion = async (text) => {
+  setPrompt(text);
+  
+  const userMessage = {
+    role: "user",
+    content: text,
+  };
+
+  setMessages((prev) => [...prev, userMessage]);
+  setLoading(true);
+
+  try {
+    let response;
+
+    if (!conversationId) {
+      response = await axios.post(`/start`, { prompt: text }, {
+        timeout: 180000,
+      });
+      setConversationId(response.data.conversation_id);
+    } else {
+      response = await axios.post(`/followup`, {
+        conversation_id: conversationId,
+        prompt: text,
+      }, {
+        timeout: 180000,
+      });
+    }
+
+    const genieResponses = response.data.response;
+    let formatted = [];
+
+    genieResponses.forEach((res) => {
+      if (res.type === "text") {
+        formatted.push({
+          role: "assistant",
+          type: "text",
+          content: res.content,
+        });
+      }
+
+      if (res.type === "query") {
+        formatted.push({
+          role: "assistant",
+          type: "table",
+          description: res.description,
+          data: res.data,
+          generated_code: res.generated_code,
+        });
+      }
+    });
+
+    setMessages((prev) => [...prev, ...formatted]);
+  } catch (error) {
+    console.error(error);
+  }
+
+  setLoading(false);
+};
+
 
   const renderMessage = (msg, index) => {
   if (msg.role === "user") {
@@ -180,6 +268,19 @@ const detectChartType = (data) => {
     return (
       <div key={index} className="assistant bubble fade-in">
         {msg.content}
+      </div>
+    );
+  }
+
+  if (msg.type === "suggestion") {
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        <div
+          className="suggestion-chip"
+          onClick={() => sendMessageFromSuggestion(msg.content)}
+        >
+          {msg.content}
+        </div>
       </div>
     );
   }
