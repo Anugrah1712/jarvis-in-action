@@ -442,3 +442,8 @@ body::-webkit-scrollbar {
 .download-btn:hover {
   background: #1d4ed8;
 }
+.row-info {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}

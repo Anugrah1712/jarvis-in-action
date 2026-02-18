@@ -31,8 +31,11 @@ function App() {
 
   // Auto-scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    if (!loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
 
   // Format numbers with commas
   const formatValue = (value) => {
@@ -68,6 +71,11 @@ function App() {
 
     if (!customText) setPrompt("");
     setLoading(true);
+
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+
 
     try {
       let response;
@@ -294,6 +302,9 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
           </button>
         </div>
 
+        <div className="row-info">
+          Showing {Math.min(100, msg.data.length)} of {msg.data.length} rows
+        </div>
 
         {/* TABLE */}
         <div className="table-container">
@@ -319,7 +330,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
             </thead>
 
             <tbody>
-              {msg.data.map((row, i) => (
+              {msg.data.slice(0, 100).map((row, i) => (
                 <tr key={i}>
                   {keys.map((key, j) => {
                     const isNumeric =
