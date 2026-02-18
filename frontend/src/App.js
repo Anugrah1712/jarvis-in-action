@@ -53,31 +53,34 @@ function App() {
   return value;
 };
 
-  const sendMessage = async () => {
-    if (!prompt.trim()) return;
+  const sendMessage = async (customText = null) => {
+    if (loading) return;
+    const textToSend = customText ?? prompt;
+
+    if (!textToSend.trim()) return;
 
     const userMessage = {
       role: "user",
-      content: prompt,
+      content: textToSend,
     };
 
     setMessages((prev) => [...prev, userMessage]);
 
-    setPrompt(""); // ✅ Clear immediately
+    if (!customText) setPrompt("");
     setLoading(true);
 
     try {
       let response;
 
       if (!conversationId) {
-        response = await axios.post(`/start`, { prompt },{
+        response = await axios.post(`/start`, { prompt: textToSend },{
           timeout:180000,
         });
         setConversationId(response.data.conversation_id);
       } else {
         response = await axios.post(`/followup`, {
           conversation_id: conversationId,
-          prompt,
+          prompt: textToSend,
         },{
           timeout:180000,
         });
@@ -186,73 +189,81 @@ const detectChartType = (data) => {
 
   const isDateCategory = isDate(data[0][categoryKey]);
 
+  // 🔹 If only one row → Pie
   if (data.length === 1) return "pie";
 
-  if (isDateCategory) return "line";
+  // 🔹 If more than 1 numeric column → Bar (comparison)
+  if (numericKeys.length > 1) return "bar";
 
-  if (!isDateCategory && numericKeys.length >= 1)
-    return "bar";
+  // 🔹 If category is date AND single metric → Line
+  if (isDateCategory && numericKeys.length === 1) return "line";
+
+  // 🔹 If category is NOT date → Bar
+  if (!isDateCategory) return "bar";
 
   return "line";
 };
-const sendMessageFromSuggestion = async (text) => {
-  setPrompt(text);
+
+// const sendMessageFromSuggestion = async (text) => {
+//   setPrompt(text);
   
-  const userMessage = {
-    role: "user",
-    content: text,
-  };
+//   const userMessage = {
+//     role: "user",
+//     content: text,
+//   };
 
-  setMessages((prev) => [...prev, userMessage]);
-  setLoading(true);
+//   setMessages((prev) => [...prev, userMessage]);
+//   setLoading(true);
 
-  try {
-    let response;
+//   try {
+//     let response;
 
-    if (!conversationId) {
-      response = await axios.post(`/start`, { prompt: text }, {
-        timeout: 180000,
-      });
-      setConversationId(response.data.conversation_id);
-    } else {
-      response = await axios.post(`/followup`, {
-        conversation_id: conversationId,
-        prompt: text,
-      }, {
-        timeout: 180000,
-      });
-    }
+//     if (!conversationId) {
+//       response = await axios.post(`/start`, { prompt: text }, {
+//         timeout: 300000,
+//       });
+//       setConversationId(response.data.conversation_id);
+//     } else {
+//       response = await axios.post(`/followup`, {
+//         conversation_id: conversationId,
+//         prompt: text,
+//       }, {
+//         timeout: 300000,
+//       });
+//     }
 
-    const genieResponses = response.data.response;
-    let formatted = [];
+//     const genieResponses = response.data.response;
+//     let formatted = [];
 
-    genieResponses.forEach((res) => {
-      if (res.type === "text") {
-        formatted.push({
-          role: "assistant",
-          type: "text",
-          content: res.content,
-        });
-      }
+//     genieResponses.forEach((res) => {
+//       if (res.type === "text") {
+//         formatted.push({
+//           role: "assistant",
+//           type: "text",
+//           content: res.content,
+//         });
+//       }
 
-      if (res.type === "query") {
-        formatted.push({
-          role: "assistant",
-          type: "table",
-          description: res.description,
-          data: res.data,
-          generated_code: res.generated_code,
-        });
-      }
-    });
+//       if (res.type === "query") {
+//         formatted.push({
+//           role: "assistant",
+//           type: "table",
+//           description: res.description,
+//           data: res.data,
+//           generated_code: res.generated_code,
+//         });
+//       }
+//     });
 
-    setMessages((prev) => [...prev, ...formatted]);
-  } catch (error) {
-    console.error(error);
-  }
+//     setMessages((prev) => [...prev, ...formatted]);
+//   } catch (error) {
+//     console.error(error);
+//   }
 
-  setLoading(false);
-};
+//   setLoading(false);
+// };
+
+  const BAR_COLORS = ["#38bdf8", "#2563eb", "#0ea5e9", "#1d4ed8"];
 
 
   const renderMessage = (msg, index) => {
@@ -277,7 +288,7 @@ const sendMessageFromSuggestion = async (text) => {
       <div key={index} className="assistant bubble fade-in">
         <div
           className="suggestion-chip"
-          onClick={() => sendMessageFromSuggestion(msg.content)}
+          onClick={() => sendMessage(msg.content)}
         >
           {msg.content}
         </div>
@@ -384,6 +395,7 @@ const sendMessageFromSuggestion = async (text) => {
                       key={i}
                       type="monotone"
                       dataKey={key}
+                      stroke={BAR_COLORS[i % BAR_COLORS.length]}
                       strokeWidth={3}
                       dot={{ r: 4 }}
                       activeDot={{ r: 8 }}
@@ -414,13 +426,14 @@ const sendMessageFromSuggestion = async (text) => {
                   <Tooltip />
                   <Legend />
                   {numericKeys.map((key, i) => (
-                    <Bar
-                      key={i}
-                      dataKey={key}
-                      animationDuration={1000}
-                      radius={[6, 6, 0, 0]}
-                    />
-                  ))}
+                  <Bar
+                    key={i}
+                    dataKey={key}
+                    fill={BAR_COLORS[i % BAR_COLORS.length]}
+                    animationDuration={1000}
+                    radius={[6, 6, 0, 0]}
+                  />
+                ))}
                 </BarChart>
               )}
 
@@ -457,6 +470,45 @@ const sendMessageFromSuggestion = async (text) => {
           Enterprise Data Assistant powered by Databricks Genie
         </div>
       </header>
+
+    {/* ✅ Scope + Examples Section */}
+    <div className="scope-banner">
+      <div className="scope-text">
+        <strong>Scope:</strong> Currently Jarvis is integrated with 
+        <span className="scope-highlight">
+          {" "}Download, MAU, Leads, Disbursal, Push Impression and Notification Clicked
+        </span>
+        {" "}data only. Please ask questions related to these datasets.
+      </div>
+
+        <div className="examples-heading">
+          <strong>Example Questions:</strong>
+        </div>
+
+      <div className="scope-examples">
+        <span
+          className="scope-chip"
+          onClick={() =>
+            sendMessage(
+              "Download vs signup trend for past 6 months"
+            )
+          }
+        >
+          Download vs signup trend for past 6 months
+        </span>
+
+        <span
+          className="scope-chip"
+          onClick={() =>
+            sendMessage(
+              "Customer Segment split for the downloads of Dec'25"
+            )
+          }
+        >
+          Customer Segment split for the downloads of Dec'25
+        </span>
+      </div>
+    </div>
 
       <div className="chat-area">
         {messages.length === 0 && (
