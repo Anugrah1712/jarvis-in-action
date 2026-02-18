@@ -258,7 +258,7 @@ pre {
 .input-box {
   display: flex;
   padding: 20px;
-  margin-left: 240px;
+  margin-left: 210px;
   width: 70%;
   background: rgba(15, 23, 42, 0.9);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -358,7 +358,7 @@ body::-webkit-scrollbar {
 }
 
 .suggestion-chip {
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 10px 16px;
   border-radius: 18px;
   background: #1e293b;
@@ -400,6 +400,7 @@ body::-webkit-scrollbar {
 }
 
 .scope-examples {
+  margin-top: 10px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
