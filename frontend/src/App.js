@@ -3,51 +3,18 @@ import axios from "axios";
 import "./App.css";
 import logo from "./bajajlogo.png";
 
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+// =======================
+// COMMON HELPERS
+// =======================
 
-// Since frontend & backend are in same Databricks app
-const BACKEND_URL = "";
+const isNumeric = (v) => !isNaN(v) && v !== null && v !== "";
+const isDate = (v) => typeof v === "string" && !isNaN(Date.parse(v));
 
-function App() {
-  const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [conversationId, setConversationId] = useState(null);
-  const [loading, setLoading] = useState(false);
+const formatValue = (value) => {
+  if (isNumeric(value)) return Number(value).toLocaleString();
 
-  const messagesEndRef = useRef(null);
-
-  // Auto-scroll
-  useEffect(() => {
-    if (!loading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-
-  // Format numbers with commas
-  const formatValue = (value) => {
-  // Format numbers
-  if (!isNaN(value) && value !== null && value !== "") {
-    return Number(value).toLocaleString();
-  }
-
-  // Format dates
-  if (typeof value === "string" && !isNaN(Date.parse(value))) {
-    const date = new Date(value);
-    return date.toLocaleDateString("en-IN", {
+  if (isDate(value)) {
+    return new Date(value).toLocaleDateString("en-IN", {
       year: "numeric",
       month: "short",
     });
@@ -56,211 +23,191 @@ function App() {
   return value;
 };
 
-  const sendMessage = async (customText = null) => {
-    if (loading) return;
-    const textToSend = customText ?? prompt;
+// =======================
+// API WRAPPER
+// =======================
 
-    if (!textToSend.trim()) return;
+const callGenieAPI = async ({
+  conversationId,
+  prompt,
+  business,
+  setConversationId,
+}) => {
+  const endpoint = conversationId ? "/followup" : "/start";
 
-    const userMessage = {
-      role: "user",
-      content: textToSend,
+  const body = conversationId
+    ? { conversation_id: conversationId, prompt, business }
+    : { prompt, business };
+
+  const res = await axios.post(endpoint, body, { timeout: 600000 });
+
+  if (!conversationId) {
+    setConversationId(res.data.conversation_id);
+  }
+
+  return res.data.response;
+};
+
+// =======================
+// RESPONSE FORMATTER
+// =======================
+
+const formatGenieResponse = (responses) =>
+  responses
+    .map((res) => {
+      if (res.type === "text") {
+        const isSuggestion =
+          res.content.trim().endsWith("?") &&
+          /(would you|prefer|want to|like to)/i.test(res.content);
+
+        return {
+          role: "assistant",
+          type: isSuggestion ? "suggestion" : "text",
+          content: res.content,
+        };
+      }
+
+      if (res.type === "query") {
+        return {
+          role: "assistant",
+          type: "table",
+          ...res,
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+
+    const DataTable = ({ msg }) => {
+  if (!msg.data?.length) return null;
+
+  const keys = Object.keys(msg.data[0]);
+
+  return (
+    <>
+      {msg.description && (
+        <div className="query-title">{msg.description}</div>
+      )}
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              {keys.map((col) => (
+                <th
+                  key={col}
+                  className={isNumeric(msg.data[0][col]) ? "numeric-column" : ""}
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {msg.data.slice(0, 100).map((row, i) => (
+              <tr key={i}>
+                {keys.map((key) => (
+                  <td
+                    key={key}
+                    className={isNumeric(row[key]) ? "numeric-column" : ""}
+                  >
+                    {formatValue(row[key])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+};
+
+function App() {
+  const [prompt, setPrompt] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [selectedBusiness, setSelectedBusiness] = useState("");
+
+  const messagesEndRef = useRef(null);
+  const handleBusinessChange = (e) => {
+    setSelectedBusiness(e.target.value);
+    setConversationId(null);
+    setMessages([]);
+  };
+
+  useEffect(() => {
+    const loadBusinesses = async () => {
+      try {
+        const res = await axios.get("/api/businesses");
+        setBusinesses(res.data);
+        if (res.data.length > 0) {
+          setSelectedBusiness(res.data[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load businesses", err);
+      }
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    loadBusinesses();
+  }, []);
 
-    if (!customText) setPrompt("");
-    setLoading(true);
-
-    setTimeout(() => {
+  // Auto-scroll
+  useEffect(() => {
+    if (!loading) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-
-
-    try {
-      let response;
-
-      if (!conversationId) {
-        response = await axios.post(`/start`, { prompt: textToSend },{
-          timeout:600000,
-        });
-        setConversationId(response.data.conversation_id);
-      } else {
-        response = await axios.post(`/followup`, {
-          conversation_id: conversationId,
-          prompt: textToSend,
-        },{
-          timeout:600000,
-        });
-      }
-
-      console.log("GENIE RESPONSE:", response.data);
-
-      const genieResponses = response.data.response;
-      let formatted = [];
-
-      genieResponses.forEach((res) => {
-        if (res.type === "text") {
-          const content = res.content;
-
-          const isSuggestion =
-            content.trim().endsWith("?") &&
-            (
-              content.toLowerCase().includes("would you") ||
-              content.toLowerCase().includes("prefer") ||
-              content.toLowerCase().includes("want to") ||
-              content.toLowerCase().includes("like to")
-            );
-
-          if (isSuggestion) {
-            formatted.push({
-              role: "assistant",
-              type: "suggestion",
-              content,
-            });
-          } else {
-            formatted.push({
-              role: "assistant",
-              type: "text",
-              content,
-            });
-          }
-        }
-
-        if (res.type === "query") {
-          formatted.push({
-            role: "assistant",
-            type: "table",
-            description: res.description,
-            data: res.data,
-            generated_code: res.generated_code,
-          });
-        }
-
-        // Optional chart support if backend sends chart type
-        if (res.type === "chart") {
-          formatted.push({
-            role: "assistant",
-            type: "chart",
-            data: res.data,
-          });
-        }
-      });
-
-      setMessages((prev) => [...prev, ...formatted]);
-    } catch (error) {
-      console.error("API Error:", error);
-
-      if (error.code === "ECONNABORTED") {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "text",
-            content:
-              "⏳ Genie is processing a complex query. Please wait and try again.",
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "text",
-            content:
-              "⚠️ Unable to reach Genie backend. Please check connection.",
-          },
-        ]);
-      }
     }
+  }, [messages]);
 
-    setLoading(false);
-  };
-  const isNumeric = (value) =>
-  !isNaN(value) && value !== null && value !== "";
+  const sendMessage = async (customText = null) => {
+  if (loading) return;
 
-const isDate = (value) =>
-  typeof value === "string" && !isNaN(Date.parse(value));
+  const text = customText ?? prompt;
+  if (!text.trim()) return;
 
-const detectChartType = (data) => {
-  if (!data || data.length === 0) return null;
+  setMessages((prev) => [...prev, { role: "user", content: text }]);
+  if (!customText) setPrompt("");
+  setLoading(true);
 
-  const keys = Object.keys(data[0]);
+  try {
+    const genieResponses = await callGenieAPI({
+      conversationId,
+      prompt: text,
+      business: selectedBusiness,
+      setConversationId,
+    });
 
-  const numericKeys = keys.filter((k) =>
-    isNumeric(data[0][k])
-  );
+    const formatted = formatGenieResponse(genieResponses);
+    setMessages((prev) => [...prev, ...formatted]);
+  } catch (error) {
+    const message =
+      error.code === "ECONNABORTED"
+        ? "⏳ Genie is processing a complex query."
+        : "⚠️ Unable to reach Genie backend.";
 
-  const categoryKey = keys.find((k) => !numericKeys.includes(k));
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", type: "text", content: message },
+    ]);
+  }
 
-  if (!categoryKey || numericKeys.length === 0) return null;
-
-  const isDateCategory = isDate(data[0][categoryKey]);
-
-  // 🔹 If only one row → Pie
-  if (data.length === 1) return "pie";
-
-  // 🔹 If more than 1 numeric column → Bar (comparison)
-  if (numericKeys.length > 1) return "bar";
-
-  // 🔹 If category is date AND single metric → Line
-  if (isDateCategory && numericKeys.length === 1) return "line";
-
-  // 🔹 If category is NOT date → Bar
-  if (!isDateCategory) return "bar";
-
-  return "line";
+  setLoading(false);
 };
-
-const downloadCSV = (data, filename = "jarvis_data.csv") => {
-  if (!data || data.length === 0) return;
-
-  const headers = Object.keys(data[0]);
-
-  const csvRows = [
-    headers.join(","), // header row
-    ...data.map(row =>
-      headers.map(field => {
-        const value = row[field] ?? "";
-        return `"${String(value).replace(/"/g, '""')}"`;
-      }).join(",")
-    )
-  ];
-
-  const csvString = csvRows.join("\n");
-
-  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-  const BAR_COLORS = ["#38bdf8", "#2563eb", "#0ea5e9", "#1d4ed8"];
-
 
   const renderMessage = (msg, index) => {
-  if (msg.role === "user") {
-    return (
-      <div key={index} className="user bubble fade-in">
-        {msg.content}
-      </div>
-    );
-  }
+  if (msg.role === "user")
+    return <div key={index} className="user bubble">{msg.content}</div>;
 
-  if (msg.type === "text") {
-    return (
-      <div key={index} className="assistant bubble fade-in">
-        {msg.content}
-      </div>
-    );
-  }
+  if (msg.type === "text")
+    return <div key={index} className="assistant bubble">{msg.content}</div>;
 
-  if (msg.type === "suggestion") {
+  if (msg.type === "suggestion")
     return (
-      <div key={index} className="assistant bubble fade-in">
+      <div key={index} className="assistant bubble">
         <div
           className="suggestion-chip"
           onClick={() => sendMessage(msg.content)}
@@ -269,187 +216,13 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         </div>
       </div>
     );
-  }
 
-  if (msg.type === "table" && msg.data?.length > 0) {
-    const keys = Object.keys(msg.data[0]);
-
-    const numericKeys = keys.filter((k) =>
-      !isNaN(msg.data[0][k]) && msg.data[0][k] !== null
-    );
-
-    const categoryKey = keys.find((k) => !numericKeys.includes(k));
-
-    const chartType = detectChartType(msg.data);
-
+  if (msg.type === "table")
     return (
-      <div key={index} className="assistant bubble fade-in">
-        {msg.description && (
-          <div className="query-title">{msg.description}</div>
-        )}
-
-        <div className="table-actions">
-          <button
-            className="download-btn"
-            onClick={() =>
-              downloadCSV(
-                msg.data,
-                `jarvis_export_${Date.now()}.csv`
-              )
-            }
-          >
-            ⬇ Download CSV
-          </button>
-        </div>
-
-        <div className="row-info">
-          Showing {Math.min(100, msg.data.length)} of {msg.data.length} rows
-        </div>
-
-        {/* TABLE */}
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                {keys.map((col, i) => {
-                  const isNumeric =
-                    msg.data.length > 0 &&
-                    !isNaN(msg.data[0][col]) &&
-                    msg.data[0][col] !== null;
-
-                  return (
-                    <th
-                      key={i}
-                      className={isNumeric ? "numeric-column" : ""}
-                    >
-                      {col}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-
-            <tbody>
-              {msg.data.slice(0, 100).map((row, i) => (
-                <tr key={i}>
-                  {keys.map((key, j) => {
-                    const isNumeric =
-                      !isNaN(row[key]) && row[key] !== null;
-
-                    return (
-                      <td
-                        key={j}
-                        className={isNumeric ? "numeric-column" : ""}
-                      >
-                        {formatValue(row[key])}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* SQL */}
-        {msg.generated_code && (
-          <details className="sql-box">
-            <summary>View Generated SQL</summary>
-            <pre>{msg.generated_code}</pre>
-          </details>
-        )}
-
-        {/* CHART AFTER TABLE */}
-        {chartType && categoryKey && numericKeys.length > 0 && (
-          <div className="chart-wrapper fade-in">
-            <ResponsiveContainer width="100%" height={350}>
-              {chartType === "line" && (
-                <LineChart data={msg.data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey={categoryKey}
-                    tickFormatter={(value) => {
-                      if (isDate(value)) {
-                        const date = new Date(value);
-                        return date.toLocaleDateString("en-IN", {
-                          month: "short",
-                          year: "2-digit",
-                        });
-                      }
-                      return value;
-                    }}
-                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  {numericKeys.map((key, i) => (
-                    <Line
-                      key={i}
-                      type="monotone"
-                      dataKey={key}
-                      stroke={BAR_COLORS[i % BAR_COLORS.length]}
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 8 }}
-                      animationDuration={1000}
-                    />
-                  ))}
-                </LineChart>
-              )}
-
-              {chartType === "bar" && (
-                <BarChart data={msg.data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey={categoryKey}
-                    tickFormatter={(value) => {
-                      if (isDate(value)) {
-                        const date = new Date(value);
-                        return date.toLocaleDateString("en-IN", {
-                          month: "short",
-                          year: "2-digit",
-                        });
-                      }
-                      return value;
-                    }}
-                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  {numericKeys.map((key, i) => (
-                  <Bar
-                    key={i}
-                    dataKey={key}
-                    fill={BAR_COLORS[i % BAR_COLORS.length]}
-                    animationDuration={1000}
-                    radius={[6, 6, 0, 0]}
-                  />
-                ))}
-                </BarChart>
-              )}
-
-              {chartType === "pie" && (
-                <PieChart>
-                  <Tooltip />
-                  <Legend />
-                  <Pie
-                    data={msg.data}
-                    dataKey={numericKeys[0]}
-                    nameKey={categoryKey}
-                    outerRadius={120}
-                    label
-                    animationDuration={1000}
-                  />
-                </PieChart>
-              )}
-            </ResponsiveContainer>
-          </div>
-        )}
+      <div key={index} className="assistant bubble">
+        <DataTable msg={msg} />
       </div>
     );
-  }
 
   return null;
 };
@@ -459,49 +232,22 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
       <header className="header">
         <img src={logo} className="logo-right" alt="logo" />
         <h1 className="title">JARVIS</h1>
+            <select
+              className="business-dropdown"
+              value={selectedBusiness}
+              onChange={handleBusinessChange}
+            >
+              {businesses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+
         <div className="tagline">
           Enterprise Data Assistant powered by Databricks Genie
         </div>
       </header>
-
-    {/* ✅ Scope + Examples Section */}
-    <div className="scope-banner">
-      <div className="scope-text">
-        <strong>Scope:</strong> Currently Jarvis is integrated with 
-        <span className="scope-highlight">
-          {" "}Download, MAU, Leads, Disbursal, Push Impression and Notification Clicked
-        </span>
-        {" "}data only. Please ask questions related to these datasets.
-      </div>
-
-        <div className="examples-heading">
-          <strong>Example Questions:</strong>
-        </div>
-
-      <div className="scope-examples">
-        <span
-          className="scope-chip"
-          onClick={() =>
-            sendMessage(
-              "Download vs signup trend for past 6 months"
-            )
-          }
-        >
-          Download vs signup trend for past 6 months
-        </span>
-
-        <span
-          className="scope-chip"
-          onClick={() =>
-            sendMessage(
-              "Customer Segment split for the downloads of Dec'25"
-            )
-          }
-        >
-          Customer Segment split for the downloads of Dec'25
-        </span>
-      </div>
-    </div>
 
       <div className="chat-area">
         {messages.length === 0 && (
