@@ -129,6 +129,18 @@ body {
   content: " .";
   animation: dots 1.5s infinite steps(3);
 }
+.assistant.bubble {
+  align-self: flex-start;
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-bottom-left-radius: 6px;
+
+  /* ADD THESE */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* allow table/chart to expand */
+}
 
 @keyframes dots {
   0% { content: " ."; }
@@ -142,6 +154,9 @@ body {
   margin-top: 20px;
   overflow-x: auto;
   border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 table {

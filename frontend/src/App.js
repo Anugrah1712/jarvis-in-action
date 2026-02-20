@@ -161,9 +161,41 @@ const DataTable = ({ msg }) => {
 
   const keys = Object.keys(msg.data[0]);
 
+  const downloadCSV = () => {
+    const header = keys.join(",");
+    const rows = msg.data.slice(0, 100).map((row) =>
+      keys.map((k) => `"${row[k]}"`).join(",")
+    );
+    const csvContent = [header, ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "table_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <>
       {msg.description && <div className="query-title">{msg.description}</div>}
+
+      <button
+        onClick={downloadCSV}
+        style={{
+          margin: "10px 0",
+          padding: "8px 12px",
+          borderRadius: "8px",
+          border: "none",
+          cursor: "pointer",
+          background: "#38bdf8",
+          color: "#0f172a",
+          fontWeight: 600,
+        }}
+      >
+        Download CSV
+      </button>
+
       <div className="table-container">
         <table>
           <thead>
@@ -201,15 +233,27 @@ const DataTable = ({ msg }) => {
 const ChartRenderer = ({ msg }) => {
   if (!msg.data || !msg.data.length) return null;
 
+  // Chart container style
+  const containerStyle = {
+    width: "100%",
+    height: "400px", // slightly bigger for visibility
+    marginTop: "20px",
+    padding: "10px",
+    borderRadius: "12px",
+    background: "rgba(255,255,255,0.03)",
+    overflow: "visible",
+  };
+
   const chartProps = {
     data: msg.data,
-    margin: { top: 20, right: 20, left: 0, bottom: 20 },
+    margin: { top: 20, right: 30, left: 0, bottom: 20 },
   };
 
   return (
-    <div className="chart-container">
+    <div className="chart-container" style={containerStyle}>
       {msg.description && <div className="query-title">{msg.description}</div>}
-      <ResponsiveContainer width="100%" height={300}>
+
+      <ResponsiveContainer width="100%" height="100%">
         {msg.chartType === "bar" && (
           <BarChart {...chartProps}>
             <XAxis dataKey={msg.xKey} />
@@ -238,11 +282,12 @@ const ChartRenderer = ({ msg }) => {
               nameKey={msg.xKey}
               cx="50%"
               cy="50%"
-              outerRadius={100}
+              outerRadius={120} // bigger radius
               fill="#8884d8"
               label
             />
             <Tooltip />
+            <Legend />
           </PieChart>
         )}
       </ResponsiveContainer>
