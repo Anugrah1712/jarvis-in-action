@@ -1,0 +1,617 @@
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import "./App.css";
+import logo from "./bajajlogo.png";
+
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+function App() {
+  const [prompt, setPrompt] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [selectedBusiness, setSelectedBusiness] = useState("");
+  const messagesEndRef = useRef(null);
+  const [showScope, setShowScope] = useState(false);
+
+  useEffect(() => {
+  const fetchBusinesses = async () => {
+    try {
+      const res = await axios.get("/api/businesses");
+      setBusinesses(res.data);
+
+      // Auto select first business
+      if (res.data.length > 0) {
+        setSelectedBusiness(res.data[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to load businesses", err);
+    }
+  };
+
+  fetchBusinesses();
+}, []);
+
+  const selectedBusinessObj = businesses.find(
+    (b) => b.id === selectedBusiness
+  );
+  // Auto-scroll
+  useEffect(() => {
+    if (!loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // Format numbers with commas
+  const formatValue = (value, granularity = "daily") => {
+    if (!isNaN(value) && value !== null && value !== "") {
+      return Number(value).toLocaleString();
+    }
+
+    if (typeof value === "string" && !isNaN(Date.parse(value))) {
+      const date = new Date(value);
+
+      if (granularity === "monthly") {
+        return date.toLocaleDateString("en-IN", {
+          month: "short",
+          year: "numeric",
+        });
+      }
+
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+
+    return value;
+  };
+
+  const sendMessage = async (customText = null) => {
+    if (loading) return;
+    const textToSend = customText ?? prompt;
+
+    if (!textToSend.trim()) return;
+
+    const userMessage = {
+      role: "user",
+      content: textToSend,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    if (!customText) setPrompt("");
+    setLoading(true);
+
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+
+
+    try {
+      let response;
+
+      if (!conversationId) {
+        response = await axios.post(`/start`, {
+          prompt: textToSend,
+          business: selectedBusiness,
+        },{
+          timeout:600000,
+        });
+        setConversationId(response.data.conversation_id);
+      } else {
+        response = await axios.post(`/followup`, {
+          conversation_id: conversationId,
+          prompt: textToSend,
+          business: selectedBusiness,
+        },{
+          timeout:600000,
+        });
+      }
+
+      console.log("GENIE RESPONSE:", response.data);
+
+      const genieResponses = response.data.response;
+      let formatted = [];
+
+      genieResponses.forEach((res) => {
+        if (res.type === "text") {
+          const content = res.content;
+
+          const isSuggestion =
+            content.trim().endsWith("?") &&
+            (
+              content.toLowerCase().includes("would you") ||
+              content.toLowerCase().includes("prefer") ||
+              content.toLowerCase().includes("want to") ||
+              content.toLowerCase().includes("like to")
+            );
+
+          if (isSuggestion) {
+            formatted.push({
+              role: "assistant",
+              type: "suggestion",
+              content,
+            });
+          } else {
+            formatted.push({
+              role: "assistant",
+              type: "text",
+              content,
+            });
+          }
+        }
+
+        if (res.type === "query") {
+          formatted.push({
+            role: "assistant",
+            type: "table",
+            description: res.description,
+            data: res.data,
+            generated_code: res.generated_code,
+          });
+        }
+
+        // Optional chart support if backend sends chart type
+        if (res.type === "chart") {
+          formatted.push({
+            role: "assistant",
+            type: "chart",
+            data: res.data,
+          });
+        }
+      });
+
+      setMessages((prev) => [...prev, ...formatted]);
+    } catch (error) {
+      console.error("API Error:", error);
+
+      if (error.code === "ECONNABORTED") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            type: "text",
+            content:
+              "⏳ Genie is processing a complex query. Please wait and try again.",
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            type: "text",
+            content:
+              "⚠️ Unable to reach Genie backend. Please check connection.",
+          },
+        ]);
+      }
+    }
+
+    setLoading(false);
+  };
+  const isNumeric = (value) =>
+  !isNaN(value) && value !== null && value !== "";
+
+const isDate = (value) =>
+  typeof value === "string" && !isNaN(Date.parse(value));
+
+const detectDateGranularity = (data, dateKey) => {
+  if (!data || data.length < 2) return "daily";
+
+  const dates = data
+    .map(row => new Date(row[dateKey]))
+    .filter(d => !isNaN(d));
+
+  if (dates.length < 2) return "daily";
+
+  // Sort dates
+  dates.sort((a, b) => a - b);
+
+  const diffInDays =
+    (dates[1] - dates[0]) / (1000 * 60 * 60 * 24);
+
+  // If gap >= 28 days → likely monthly
+  if (diffInDays >= 28) return "monthly";
+
+  return "daily";
+};
+
+const detectChartType = (data) => {
+  if (!data || data.length === 0) return null;
+
+  const keys = Object.keys(data[0]);
+
+  const numericKeys = keys.filter((k) =>
+    isNumeric(data[0][k])
+  );
+
+  const categoryKey = keys.find((k) => !numericKeys.includes(k));
+
+  if (!categoryKey || numericKeys.length === 0) return null;
+
+  const isDateCategory = isDate(data[0][categoryKey]);
+
+  // 🔹 If only one row → Pie
+  if (data.length === 1) return "pie";
+
+  // 🔹 If more than 1 numeric column → Bar (comparison)
+  if (numericKeys.length > 1) return "bar";
+
+  // 🔹 If category is date AND single metric → Line
+  if (isDateCategory && numericKeys.length === 1) return "line";
+
+  // 🔹 If category is NOT date → Bar
+  if (!isDateCategory) return "bar";
+
+  return "line";
+};
+
+const downloadCSV = (data, filename = "jarvis_data.csv") => {
+  if (!data || data.length === 0) return;
+
+  const headers = Object.keys(data[0]);
+
+  const csvRows = [
+    headers.join(","), // header row
+    ...data.map(row =>
+      headers.map(field => {
+        const value = row[field] ?? "";
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(",")
+    )
+  ];
+
+  const csvString = csvRows.join("\n");
+
+  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+  const BAR_COLORS = ["#38bdf8", "#2563eb", "#0ea5e9", "#1d4ed8"];
+
+
+  const renderMessage = (msg, index) => {
+  if (msg.role === "user") {
+    return (
+      <div key={index} className="user bubble fade-in">
+        {msg.content}
+      </div>
+    );
+  }
+
+  if (msg.type === "text") {
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        {msg.content}
+      </div>
+    );
+  }
+
+  if (msg.type === "suggestion") {
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        <div
+          className="suggestion-chip"
+          onClick={() => sendMessage(msg.content)}
+        >
+          {msg.content}
+        </div>
+      </div>
+    );
+  }
+
+  if (msg.type === "table" && msg.data?.length > 0) {
+    const keys = Object.keys(msg.data[0]);
+
+    const numericKeys = keys.filter((k) =>
+      !isNaN(msg.data[0][k]) && msg.data[0][k] !== null
+    );
+
+    const categoryKey = keys.find((k) => !numericKeys.includes(k));
+
+    const chartType = detectChartType(msg.data);
+
+    const granularity =
+      categoryKey && isDate(msg.data[0][categoryKey])
+        ? detectDateGranularity(msg.data, categoryKey)
+        : "daily";
+
+    return (
+      <div key={index} className="assistant bubble fade-in">
+        {msg.description && (
+          <div className="query-title">{msg.description}</div>
+        )}
+
+        <div className="table-actions">
+          <button
+            className="download-btn"
+            onClick={() =>
+              downloadCSV(
+                msg.data,
+                `jarvis_export_${Date.now()}.csv`
+              )
+            }
+          >
+            ⬇ Download CSV
+          </button>
+        </div>
+
+        <div className="row-info">
+          Showing {Math.min(100, msg.data.length)} of {msg.data.length} rows
+        </div>
+
+        {/* TABLE */}
+        <div className="data-panel">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {keys.map((col, i) => {
+                  const isNumeric =
+                    msg.data.length > 0 &&
+                    !isNaN(msg.data[0][col]) &&
+                    msg.data[0][col] !== null;
+
+                  return (
+                    <th
+                      key={i}
+                      className={isNumeric ? "numeric-column" : ""}
+                    >
+                      {col}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+
+            <tbody>
+              {msg.data.slice(0, 100).map((row, i) => (
+                <tr key={i}>
+                  {keys.map((key, j) => {
+                    const isNumeric =
+                      !isNaN(row[key]) && row[key] !== null;
+
+                    return (
+                      <td
+                        key={j}
+                        className={isNumeric ? "numeric-column" : ""}
+                      >
+                        {formatValue(row[key], granularity)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </div>
+
+        {/* SQL */}
+        {msg.generated_code && (
+          <details className="sql-box">
+            <summary>View Generated SQL</summary>
+            <pre>{msg.generated_code}</pre>
+          </details>
+        )}
+
+        {/* CHART AFTER TABLE */}
+        {chartType && categoryKey && numericKeys.length > 0 && (
+          <div className="chart-wrapper fade-in">
+            <ResponsiveContainer width="100%" height={350}>
+              {chartType === "line" && (
+                <LineChart data={msg.data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey={categoryKey}
+                    tickFormatter={(value) => {
+                      if (!isDate(value)) return value;
+
+                      const date = new Date(value);
+
+                      if (granularity === "monthly") {
+                        return date.toLocaleDateString("en-IN", {
+                          month: "short",
+                          year: "2-digit",
+                        });
+                      }
+
+                      return date.toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                      });
+                    }}
+                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {numericKeys.map((key, i) => (
+                    <Line
+                      key={i}
+                      type="monotone"
+                      dataKey={key}
+                      stroke={BAR_COLORS[i % BAR_COLORS.length]}
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 8 }}
+                      animationDuration={1000}
+                    />
+                  ))}
+                </LineChart>
+              )}
+
+              {chartType === "bar" && (
+                <BarChart data={msg.data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey={categoryKey}
+                    tickFormatter={(value) => {
+                      if (!isDate(value)) return value;
+
+                      const date = new Date(value);
+
+                      if (granularity === "monthly") {
+                        return date.toLocaleDateString("en-IN", {
+                          month: "short",
+                          year: "2-digit",
+                        });
+                      }
+
+                      return date.toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                      });
+                    }}
+                    tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {numericKeys.map((key, i) => (
+                  <Bar
+                    key={i}
+                    dataKey={key}
+                    fill={BAR_COLORS[i % BAR_COLORS.length]}
+                    animationDuration={1000}
+                    radius={[6, 6, 0, 0]}
+                  />
+                ))}
+                </BarChart>
+              )}
+
+              {chartType === "pie" && (
+                <PieChart>
+                  <Tooltip />
+                  <Legend />
+                  <Pie
+                    data={msg.data}
+                    dataKey={numericKeys[0]}
+                    nameKey={categoryKey}
+                    outerRadius={120}
+                    label
+                    animationDuration={1000}
+                  />
+                </PieChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+};
+
+  return (
+    <div className="app-container">
+      <header className="header">
+        <img src={logo} className="logo-right" alt="logo" />
+        <h1 className="title">JARVIS</h1>
+        <div className="tagline">
+          Enterprise Data Assistant powered by Databricks Genie
+        </div>
+      </header>
+      <div className="business-selector">
+        <div className="business-header">
+          <label>Select Business:</label>
+
+          {selectedBusinessObj?.scope && (
+            <button
+              className="scope-toggle"
+              onClick={() => setShowScope(!showScope)}
+            >
+              {showScope ? "▲" : "▼"}
+            </button>
+          )}
+        </div>
+
+        <select
+          value={selectedBusiness}
+          onChange={(e) => {
+            setSelectedBusiness(e.target.value);
+            setConversationId(null);
+            setMessages([]);
+            setShowScope(false); // collapse when switching business
+          }}
+        >
+          {businesses.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+
+        {showScope && selectedBusinessObj?.scope && (
+          <div className="scope-box fade-in">
+            {Array.isArray(selectedBusinessObj.scope) ? (
+              <ul>
+                {selectedBusinessObj.scope.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              selectedBusinessObj.scope
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="chat-area">
+        {messages.length === 0 && (
+          <div className="welcome">
+            Hello! Jarvis this side 👋🏻
+            <br />
+            How can I assist you today?
+          </div>
+        )}
+
+        {messages.map((msg, index) => renderMessage(msg, index))}
+
+        {loading && (
+          <div className="assistant bubble typing">
+            Jarvis is thinking...
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="input-box">
+        <input
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Ask Jarvis something magical..."
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        />
+
+        <button onClick={sendMessage}>Send</button>
+      </div>
+    </div>
+  );
+}
+
+export default App;
