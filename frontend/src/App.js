@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./App.css";
 import logo from "./bajajlogo.png";
-
+import { useMemo } from "react";
+import html2canvas from "html2canvas";
 import {
   BarChart,
   Bar,
@@ -26,7 +27,7 @@ function App() {
   const [businesses, setBusinesses] = useState([]);
   const [selectedBusiness, setSelectedBusiness] = useState("");
   const messagesEndRef = useRef(null);
-  const [showScope, setShowScope] = useState(false);
+  const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
   const fetchBusinesses = async () => {
@@ -46,9 +47,31 @@ function App() {
   fetchBusinesses();
 }, []);
 
-  const selectedBusinessObj = businesses.find(
-    (b) => b.id === selectedBusiness
-  );
+  const selectedBusinessObj = useMemo(() => {
+  return businesses.find((b) => b.id === selectedBusiness);
+}, [businesses, selectedBusiness]);
+
+  const clearChat = () => {
+    setMessages([]);
+    setConversationId(null);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+};
+
+const exportChart = (id) => {
+  const chart = document.getElementById(id);
+  if (!chart) return;
+
+  html2canvas(chart).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "chart.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  });
+};
+
   // Auto-scroll
   useEffect(() => {
     if (!loading) {
@@ -82,6 +105,12 @@ function App() {
     return value;
   };
 
+  const loadSession = (session) => {
+  setConversationId(session.id);
+  setMessages(session.messages);
+  setSelectedBusiness(session.business);
+};
+
   const sendMessage = async (customText = null) => {
     if (loading) return;
     const textToSend = customText ?? prompt;
@@ -91,6 +120,7 @@ function App() {
     const userMessage = {
       role: "user",
       content: textToSend,
+      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -110,17 +140,31 @@ function App() {
         response = await axios.post(`/start`, {
           prompt: textToSend,
           business: selectedBusiness,
-        },{
-          timeout:600000,
+        }, {
+          timeout: 600000,
         });
-        setConversationId(response.data.conversation_id);
+
+        const newConversationId = response.data.conversation_id;
+        setConversationId(newConversationId);
+
+        // Create new session
+        setSessions(prev => [
+          {
+            id: newConversationId,
+            title: textToSend.slice(0, 40),
+            business: selectedBusiness,
+            messages: [],
+            createdAt: new Date(),
+          },
+          ...prev
+        ]);
       } else {
         response = await axios.post(`/followup`, {
           conversation_id: conversationId,
           prompt: textToSend,
           business: selectedBusiness,
-        },{
-          timeout:600000,
+        }, {
+          timeout: 600000,
         });
       }
 
@@ -144,15 +188,17 @@ function App() {
 
           if (isSuggestion) {
             formatted.push({
-              role: "assistant",
-              type: "suggestion",
-              content,
+                role: "assistant",
+                type: "text",
+                content,
+                timestamp: new Date(),
             });
           } else {
             formatted.push({
               role: "assistant",
               type: "text",
               content,
+              timestamp: new Date(),
             });
           }
         }
@@ -164,6 +210,7 @@ function App() {
             description: res.description,
             data: res.data,
             generated_code: res.generated_code,
+            timestamp: new Date(),
           });
         }
 
@@ -173,11 +220,22 @@ function App() {
             role: "assistant",
             type: "chart",
             data: res.data,
+            timestamp: new Date(),
           });
         }
       });
 
       setMessages((prev) => [...prev, ...formatted]);
+            setSessions(prev =>
+        prev.map(session =>
+          session.id === conversationId
+            ? {
+                ...session,
+                messages: [...messages, userMessage, ...formatted]
+              }
+            : session
+        )
+      );
     } catch (error) {
       console.error("API Error:", error);
 
@@ -187,6 +245,7 @@ function App() {
           {
             role: "assistant",
             type: "text",
+            timestamp: new Date(),
             content:
               "⏳ Genie is processing a complex query. Please wait and try again.",
           },
@@ -197,6 +256,7 @@ function App() {
           {
             role: "assistant",
             type: "text",
+            timestamp: new Date(),
             content:
               "⚠️ Unable to reach Genie backend. Please check connection.",
           },
@@ -297,6 +357,9 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
     return (
       <div key={index} className="user bubble fade-in">
         {msg.content}
+        <div className="timestamp">
+          {msg.timestamp?.toLocaleTimeString()}
+        </div>
       </div>
     );
   }
@@ -305,6 +368,9 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
     return (
       <div key={index} className="assistant bubble fade-in">
         {msg.content}
+        <div className="timestamp">
+          {msg.timestamp?.toLocaleTimeString()}
+        </div>
       </div>
     );
   }
@@ -345,6 +411,13 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         )}
 
         <div className="table-actions">
+          <button
+          className="download-btn"
+          onClick={() => copyToClipboard(JSON.stringify(msg.data, null, 2))}
+        >
+          📋 Copy Table
+        </button>
+
           <button
             className="download-btn"
             onClick={() =>
@@ -412,14 +485,29 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         {/* SQL */}
         {msg.generated_code && (
           <details className="sql-box">
-            <summary>View Generated SQL</summary>
+            <summary>
+              View Generated SQL
+              <button
+                style={{ marginLeft: 10 }}
+                onClick={() => copyToClipboard(msg.generated_code)}
+              >
+                Copy
+              </button>
+            </summary>
             <pre>{msg.generated_code}</pre>
           </details>
         )}
 
         {/* CHART AFTER TABLE */}
         {chartType && categoryKey && numericKeys.length > 0 && (
-          <div className="chart-wrapper fade-in">
+          <div id={`chart-${index}`} className="chart-wrapper fade-in">
+            <button
+              className="download-btn"
+              style={{ marginBottom: 10 }}
+              onClick={() => exportChart(`chart-${index}`)}
+            >
+              📊 Export PNG
+            </button>
             <ResponsiveContainer width="100%" height={350}>
               {chartType === "line" && (
                 <LineChart data={msg.data}>
@@ -527,35 +615,52 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 };
 
   return (
-    <div className="app-container">
+  <div className="app-container dark">
+    
+    {/* SIDEBAR */}
+    <div className="sidebar">
+      <div className="sidebar-header">
+        <h3>History</h3>
+        <button onClick={clearChat}>+ New Chat</button>
+      </div>
+
+      <div className="session-list">
+        {sessions.map((session) => (
+          <div
+            key={session.id}
+            className={`session-item ${
+              session.id === conversationId ? "active" : ""
+            }`}
+            onClick={() => loadSession(session)}
+          >
+            <div className="session-title">
+              {session.title}
+            </div>
+            <div className="session-date">
+              {new Date(session.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* MAIN CHAT AREA */}
+    <div className="main-content">
+
       <header className="header">
         <img src={logo} className="logo-right" alt="logo" />
         <h1 className="title">JARVIS</h1>
-        <div className="tagline">
-          Enterprise Data Assistant powered by Databricks Genie
-        </div>
       </header>
+
+      {/* BUSINESS SELECTOR */}
       <div className="business-selector">
-        <div className="business-header">
-          <label>Select Business:</label>
-
-          {selectedBusinessObj?.scope && (
-            <button
-              className="scope-toggle"
-              onClick={() => setShowScope(!showScope)}
-            >
-              {showScope ? "▲" : "▼"}
-            </button>
-          )}
-        </div>
-
+        <label>Select Business:</label>
         <select
           value={selectedBusiness}
           onChange={(e) => {
             setSelectedBusiness(e.target.value);
             setConversationId(null);
             setMessages([]);
-            setShowScope(false); // collapse when switching business
           }}
         >
           {businesses.map((b) => (
@@ -564,26 +669,13 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
             </option>
           ))}
         </select>
-
-        {showScope && selectedBusinessObj?.scope && (
-          <div className="scope-box fade-in">
-            {Array.isArray(selectedBusinessObj.scope) ? (
-              <ul>
-                {selectedBusinessObj.scope.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              selectedBusinessObj.scope
-            )}
-          </div>
-        )}
       </div>
 
+      {/* CHAT AREA */}
       <div className="chat-area">
         {messages.length === 0 && (
           <div className="welcome">
-            Hello! Jarvis this side 👋🏻
+            Hello! Jarvis here 👋
             <br />
             How can I assist you today?
           </div>
@@ -600,6 +692,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* INPUT */}
       <div className="input-box">
         <input
           value={prompt}
@@ -607,11 +700,12 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
           placeholder="Ask Jarvis something magical..."
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
-
         <button onClick={sendMessage}>Send</button>
       </div>
+
     </div>
-  );
+  </div>
+);
 }
 
 export default App;
