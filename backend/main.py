@@ -59,7 +59,7 @@ BUSINESS_NAMES = {
 
 BUSINESS_SCOPES = {
     "downloads": "For Downloads and Engagement, Jarvis is currently integrated with Downloads, MAU tracking, leads, disbursement, offerpool, notification clicked, push impressions funnel conversion and retention metrics.",
-    "homeloan": "For Home Loan, Jarvis is currently integrated with D360 clickstream, current offer base, current customer split, bureau, AA/CALL US/CPR journey leads, MAU, DRR Lead master,PL WIP/Reject/NI/NE Leads and DRR disbursal master."
+    "homeloan": "For Home Loan, Jarvis is currently integrated with D360 clickstream, current offer base, current customer split, bureau, AA/CALL US/CPR journey leads, MAU, DRR Lead master, DRR disbursal master and PL WIP/Reject/NI/NE Leads."
 }
 
 # ==============================
