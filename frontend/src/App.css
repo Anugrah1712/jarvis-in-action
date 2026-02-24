@@ -177,18 +177,22 @@ body {
   flex-direction: column;
 }
 
-.chat-area,
-.scope-banner,
-.business-selector {
-  width: 95%;
-  max-width: 1100px;
-  margin: 0 auto;
+.chat-area {
+  flex: 1;
+  padding: 30px 60px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .welcome {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  margin-top: 140px;
-  font-size: 20px;
+  font-size: 22px;
+  opacity: 0.8;
 }
 
 .app-container.dark .welcome {
@@ -220,7 +224,7 @@ body {
 
 .assistant {
   align-self: flex-start;
-  width: 100%;
+  max-width: 85%;
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -320,7 +324,6 @@ body {
   padding: 20px;
   background: rgba(15, 23, 42, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  height: 50px;
 }
 
 .input-box input {
