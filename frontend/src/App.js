@@ -28,7 +28,7 @@ function App() {
   const [selectedBusiness, setSelectedBusiness] = useState("");
   const messagesEndRef = useRef(null);
   const [sessions, setSessions] = useState([]);
-
+  const chatRef = useRef(null);
   useEffect(() => {
   const fetchBusinesses = async () => {
     try {
@@ -46,6 +46,17 @@ function App() {
 
   fetchBusinesses();
 }, []);
+
+  const scrollToTop = () => {
+  chatRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+  const scrollToBottom = () => {
+    chatRef.current?.scrollTo({
+      top: chatRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  };
 
   const selectedBusinessObj = useMemo(() => {
   return businesses.find((b) => b.id === selectedBusiness);
@@ -135,39 +146,42 @@ const exportChart = (id) => {
 
     try {
       let response;
+      let activeConversationId = conversationId;
 
       if (!conversationId) {
-        response = await axios.post(`/start`, {
-          prompt: textToSend,
-          business: selectedBusiness,
-        }, {
-          timeout: 600000,
-        });
-
-        const newConversationId = response.data.conversation_id;
-        setConversationId(newConversationId);
-
-        // Create new session
-        setSessions(prev => [
+        response = await axios.post(
+          `/start`,
           {
-            id: newConversationId,
+            prompt: textToSend,
+            business: selectedBusiness,
+          },
+          { timeout: 600000 }
+        );
+
+        activeConversationId = response.data.conversation_id;
+        setConversationId(activeConversationId);
+
+        setSessions((prev) => [
+          {
+            id: activeConversationId,
             title: textToSend.slice(0, 40),
             business: selectedBusiness,
-            messages: [],
+            messages: [userMessage],
             createdAt: new Date(),
           },
-          ...prev
+          ...prev,
         ]);
       } else {
-        response = await axios.post(`/followup`, {
-          conversation_id: conversationId,
-          prompt: textToSend,
-          business: selectedBusiness,
-        }, {
-          timeout: 600000,
-        });
+        response = await axios.post(
+          `/followup`,
+          {
+            conversation_id: conversationId,
+            prompt: textToSend,
+            business: selectedBusiness,
+          },
+          { timeout: 600000 }
+        );
       }
-
       console.log("GENIE RESPONSE:", response.data);
 
       const genieResponses = response.data.response;
@@ -226,16 +240,16 @@ const exportChart = (id) => {
       });
 
       setMessages((prev) => [...prev, ...formatted]);
-            setSessions(prev =>
-        prev.map(session =>
-          session.id === conversationId
-            ? {
-                ...session,
-                messages: [...messages, userMessage, ...formatted]
-              }
-            : session
-        )
-      );
+        setSessions(prev =>
+          prev.map(session =>
+            session.id === activeConversationId
+              ? {
+                  ...session,
+                  messages: [...session.messages, userMessage, ...formatted]
+                }
+              : session
+          )
+        );
     } catch (error) {
       console.error("API Error:", error);
 
@@ -625,7 +639,9 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
       </div>
 
       <div className="session-list">
-        {sessions.map((session) => (
+        {sessions
+        .filter(s => s.business === selectedBusiness)
+        .map((session) => (
           <div
             key={session.id}
             className={`session-item ${
@@ -671,8 +687,14 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         </select>
       </div>
 
+      {selectedBusinessObj?.scope && (
+        <div className="scope-box">
+          {selectedBusinessObj.scope}
+        </div>
+      )}
+
       {/* CHAT AREA */}
-      <div className="chat-area">
+      <div className="chat-area" ref={chatRef}>
         {messages.length === 0 && (
           <div className="welcome">
             Hello! Jarvis here 👋
@@ -680,6 +702,11 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
             How can I assist you today?
           </div>
         )}
+
+        <div className="scroll-buttons">
+          <button onClick={scrollToTop}>⬆</button>
+          <button onClick={scrollToBottom}>⬇</button>
+        </div>
 
         {messages.map((msg, index) => renderMessage(msg, index))}
 
