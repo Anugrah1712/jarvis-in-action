@@ -6,6 +6,7 @@ body {
   padding: 0;
   width: 100%;
   overflow-x: hidden;
+  height: 100%;
 }
 
 body {
@@ -27,11 +28,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px 15px;
-
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow: hidden;
+  position: relative;   /* 🔥 REMOVE sticky */
+  height: 100%;
 }
 
 .session-list {
@@ -44,6 +42,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
+  margin-top: 50px;
 }
 
 .sidebar-header h3 {
@@ -107,18 +106,13 @@ body {
 /* ================= APP ================= */
 .app-container {
   display: flex;
-  min-height: 100vh;
-  position: relative;
-}
-
-.app-container {
-  display: flex;
-  min-height: 100vh;
+  height: 100dvh;          /* not min-height */
   position: relative;
   background: linear-gradient(-45deg, #0f172a, #111827, #0e1a2b, #1e293b);
   background-size: 400% 400%;
   animation: gradientMove 30s ease infinite;
   color: white;
+  overflow: hidden;        /* important */
 }
 
 .app-container::before {
@@ -142,6 +136,7 @@ body {
   position: relative;
   background: linear-gradient(90deg, #0f172a, #0b1f3a);
   border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-top: 15px;
 }
 
 .session-item.active {
@@ -325,6 +320,7 @@ body {
   padding: 20px;
   background: rgba(15, 23, 42, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  height: 50px;
 }
 
 .input-box input {
