@@ -29,6 +29,7 @@ function App() {
   const messagesEndRef = useRef(null);
   const [sessions, setSessions] = useState([]);
   const chatRef = useRef(null);
+  const [showHistory, setShowHistory] = useState(true);
   useEffect(() => {
   const fetchBusinesses = async () => {
     try {
@@ -608,10 +609,11 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 };
 
   return (
-  <div className="app-container dark">
+  <div className={`app-container dark ${!showHistory ? "full-width" : ""}`}>
     
     {/* SIDEBAR */}
-    <div className="sidebar">
+    {showHistory && (
+      <div className="sidebar">
       <div className="sidebar-header">
         <h3>History</h3>
         <button onClick={clearChat}>+ New Chat</button>
@@ -637,12 +639,19 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
           </div>
         ))}
       </div>
-    </div>
+  </div>
+)}
 
     {/* MAIN CHAT AREA */}
     <div className="main-content">
 
       <header className="header">
+          <button
+            className="history-toggle"
+            onClick={() => setShowHistory(prev => !prev)}
+          >
+            {showHistory ? "Hide History" : "Show History"}
+          </button>
         <img src={logo} className="logo-right" alt="logo" />
         <h1 className="title">JARVIS</h1>
       </header>

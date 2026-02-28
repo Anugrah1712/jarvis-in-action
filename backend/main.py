@@ -51,19 +51,23 @@ GENIE_SPACES = {
     "downloads": "01f0fe62b1b8173382968ecfd39b0bbc",
     "homeloan": "01f108a734ff131fbd425fd63d15fe9d",
     "onboarding": "01f1116691fc1ccaa306cdce8b4a4dd0",
+    "heart":"01f1148ad2f41d808fec122913be243a"
 }
 
 BUSINESS_NAMES = {
     "downloads": "Downloads & Engagement",
     "homeloan": "Home Loan",
     "onboarding": "Onboarding",
+    "heart":"Heart",
 }
 
 BUSINESS_SCOPES = {
     "downloads": "For Downloads and Engagement, Jarvis is currently integrated with Downloads, MAU tracking, leads, disbursement, offerpool, notification clicked, push impressions funnel conversion and retention metrics.",
     "homeloan": "For Home Loan, Jarvis is currently integrated with D360 clickstream, current offer base, current customer split, bureau, AA/CALL US/CPR journey leads, MAU, DRR Lead master, DRR disbursal master and PL WIP/Reject/NI/NE Leads.",
-    "onboarding": "For Onboarding, Jarvis is currently integrated with session-level and user-level onboarding funnels, including App Launch, OTP, MPIN, Biometric, and Homepage stages.It tracks journey-wise (Signup/Signin) conversions, drop-offs, and Task Success Ratios (TSRs) across critical authentication steps.The setup supports platform, AppVersion, and user-type analysis with validated deduplication and data sanity checks"
+    "onboarding": "For Onboarding, Jarvis is currently integrated with session-level and user-level onboarding funnels, including App Launch, OTP, MPIN, Biometric, and Homepage stages.It tracks journey-wise (Signup/Signin) conversions, drop-offs, and Task Success Ratios (TSRs) across critical authentication steps.The setup supports platform, AppVersion, and user-type analysis with validated deduplication and data sanity checks",
+    "heart": "For Heart, Jarvis is currently integrated with accurate monitoring of core app performance metrics including MAU, DAU, App Launches, Gross Base (BTD GROSS SIGNUP), Net Base (BTD NET SIGNUP), and user stickiness to track growth and engagement trends. It also provides business-wise MAU contribution insights (%MAU by product/category)."
 }
+
 
 # ==============================
 # REQUEST MODELS

@@ -510,3 +510,43 @@ pre {
 .scroll-buttons button:hover {
   background: #1d4ed8;
 }
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  min-width: 260px;
+  background: #0f172a;
+  border-right: 1px solid #1e293b;
+  overflow-y: auto;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* When history hidden */
+.app-container.full-width .main-content {
+  width: 100%;
+}
+
+.app-container.full-width .sidebar {
+  display: none;
+}
+.data-panel {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-scroll table {
+  width: 100%;
+  min-width: 800px;
+}
