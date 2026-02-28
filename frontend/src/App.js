@@ -123,163 +123,126 @@ const exportChart = (id) => {
 };
 
   const sendMessage = async (customText = null) => {
-    if (loading) return;
-    const textToSend = customText ?? prompt;
+  if (loading) return;
 
-    if (!textToSend.trim()) return;
+  const textToSend = customText ?? prompt;
+  if (!textToSend.trim()) return;
 
-    const userMessage = {
-      role: "user",
-      content: textToSend,
-      timestamp: new Date(),
-    };
+  const userMessage = {
+    role: "user",
+    content: textToSend,
+    timestamp: new Date(),
+  };
 
-    setMessages((prev) => [...prev, userMessage]);
+  setMessages((prev) => [...prev, userMessage]);
 
-    if (!customText) setPrompt("");
-    setLoading(true);
+  if (!customText) setPrompt("");
+  setLoading(true);
 
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+  try {
+    let response;
+    let activeConversationId = conversationId;
 
+    if (!conversationId) {
+      response = await axios.post(
+        `/start`,
+        {
+          prompt: textToSend,
+          business: selectedBusiness,
+        },
+        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
+      );
 
-    try {
-      let response;
-      let activeConversationId = conversationId;
+      activeConversationId = response.data.conversation_id;
+      setConversationId(activeConversationId);
 
-      if (!conversationId) {
-        response = await axios.post(
-          `/start`,
-          {
-            prompt: textToSend,
-            business: selectedBusiness,
-          },
-          { timeout: 600000 }
-        );
-
-        activeConversationId = response.data.conversation_id;
-        setConversationId(activeConversationId);
-
-        setSessions((prev) => [
-          {
-            id: activeConversationId,
-            title: textToSend.slice(0, 40),
-            business: selectedBusiness,
-            messages: [userMessage],
-            createdAt: new Date(),
-          },
-          ...prev,
-        ]);
-      } else {
-        response = await axios.post(
-          `/followup`,
-          {
-            conversation_id: conversationId,
-            prompt: textToSend,
-            business: selectedBusiness,
-          },
-          { timeout: 600000 }
-        );
-      }
-      console.log("GENIE RESPONSE:", response.data);
-
-      const genieResponses = response.data.response;
-      let formatted = [];
-
-      genieResponses.forEach((res) => {
-        if (res.type === "text") {
-          const content = res.content;
-
-          const isSuggestion =
-            content.trim().endsWith("?") &&
-            (
-              content.toLowerCase().includes("would you") ||
-              content.toLowerCase().includes("prefer") ||
-              content.toLowerCase().includes("want to") ||
-              content.toLowerCase().includes("like to")
-            );
-
-          if (isSuggestion) {
-            formatted.push({
-                role: "assistant",
-                type: "text",
-                content,
-                timestamp: new Date(),
-            });
-          } else {
-            formatted.push({
-              role: "assistant",
-              type: "text",
-              content,
-              timestamp: new Date(),
-            });
-          }
-        }
-
-        if (res.type === "query") {
-          formatted.push({
-            role: "assistant",
-            type: "table",
-            description: res.description,
-            data: res.data,
-            generated_code: res.generated_code,
-            timestamp: new Date(),
-          });
-        }
-
-        // Optional chart support if backend sends chart type
-        if (res.type === "chart") {
-          formatted.push({
-            role: "assistant",
-            type: "chart",
-            data: res.data,
-            timestamp: new Date(),
-          });
-        }
-      });
-
-      setMessages((prev) => [...prev, ...formatted]);
-        setSessions(prev =>
-          prev.map(session =>
-            session.id === activeConversationId
-              ? {
-                  ...session,
-                  messages: [...session.messages, userMessage, ...formatted]
-                }
-              : session
-          )
-        );
-    } catch (error) {
-      console.error("API Error:", error);
-
-      if (error.code === "ECONNABORTED") {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "text",
-            timestamp: new Date(),
-            content:
-              "⏳ Genie is processing a complex query. Please wait and try again.",
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "text",
-            timestamp: new Date(),
-            content:
-              "⚠️ Unable to reach Genie backend. Please check connection.",
-          },
-        ]);
-      }
+      setSessions((prev) => [
+        {
+          id: activeConversationId,
+          title: textToSend.slice(0, 40),
+          business: selectedBusiness,
+          messages: [userMessage],
+          createdAt: new Date(),
+        },
+        ...prev,
+      ]);
+    } else {
+      response = await axios.post(
+        `/followup`,
+        {
+          conversation_id: conversationId,
+          prompt: textToSend,
+          business: selectedBusiness,
+        },
+        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
+      );
     }
 
-    setLoading(false);
-  };
+    const genieResponses = response.data.response;
+    let formatted = [];
+
+    genieResponses.forEach((res) => {
+      if (res.type === "text") {
+        formatted.push({
+          role: "assistant",
+          type: "text",
+          content: res.content,
+          timestamp: new Date(),
+        });
+      }
+
+      if (res.type === "query") {
+        formatted.push({
+          role: "assistant",
+          type: "table",
+          description: res.description,
+          data: res.data,
+          generated_code: res.generated_code,
+          timestamp: new Date(),
+        });
+      }
+
+      if (res.type === "chart") {
+        formatted.push({
+          role: "assistant",
+          type: "chart",
+          data: res.data,
+          timestamp: new Date(),
+        });
+      }
+    });
+
+    setMessages((prev) => [...prev, ...formatted]);
+
+    setSessions(prev =>
+      prev.map(session =>
+        session.id === activeConversationId
+          ? {
+              ...session,
+              messages: [...session.messages, userMessage, ...formatted]
+            }
+          : session
+      )
+    );
+
+  } catch (error) {
+    console.error("API Error:", error);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        type: "text",
+        timestamp: new Date(),
+        content:
+          "⚠️ Genie encountered an issue while processing your query. Please try again.",
+      },
+    ]);
+  } finally {
+    setLoading(false);  // 🔥 ALWAYS EXECUTES
+  }
+};
+
   const isNumeric = (value) =>
   !isNaN(value) && value !== null && value !== "";
 
