@@ -646,14 +646,18 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
     <div className="main-content">
 
       <header className="header">
+        <div className="header-left">
           <button
             className="history-toggle"
             onClick={() => setShowHistory(prev => !prev)}
           >
-            {showHistory ? "Hide History" : "Show History"}
+            {showHistory ? "☰ Hide" : "☰ History"}
           </button>
-        <img src={logo} className="logo-right" alt="logo" />
+        </div>
+
         <h1 className="title">JARVIS</h1>
+
+        <img src={logo} className="logo-right" alt="logo" />
       </header>
 
       {/* BUSINESS SELECTOR */}
@@ -713,11 +717,24 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Ask Jarvis something magical..."
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
-        <button onClick={sendMessage}>Send</button>
-      </div>
 
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            sendMessage();
+          }}
+          disabled={loading}
+        >
+          {loading ? "Sending..." : "Send"}
+        </button>
+      </div>
     </div>
   </div>
 );

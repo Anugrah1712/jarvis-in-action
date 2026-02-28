@@ -5,8 +5,8 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
-  overflow-x: hidden;
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -19,16 +19,60 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dots {
+  0% { content: " ."; }
+  33% { content: " .."; }
+  66% { content: " ..."; }
+}
+
+/* ================= APP LAYOUT ================= */
+
+.app-container {
+  display: flex;
+  height: 100dvh;
+  width: 100%;
+  position: relative;
+  background: linear-gradient(-45deg, #0f172a, #111827, #0e1a2b, #1e293b);
+  background-size: 400% 400%;
+  animation: gradientMove 30s ease infinite;
+  color: white;
+  overflow: hidden;
+}
+
+.app-container::before {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%);
+  top: -150px;
+  right: -150px;
+  z-index: -1;
+}
+
+.app-container.full-width .sidebar {
+  display: none;
+}
+
+.app-container.full-width .main-content {
+  width: 100%;
+}
+
 /* ================= SIDEBAR ================= */
 
 .sidebar {
   width: 260px;
+  min-width: 260px;
   background: #0b1220;
   border-right: 1px solid #1e293b;
   display: flex;
   flex-direction: column;
   padding: 20px 15px;
-  position: relative;   /* 🔥 REMOVE sticky */
   height: 100%;
 }
 
@@ -41,8 +85,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
-  margin-top: 50px;
+  margin: 50px 0 18px 0;
 }
 
 .sidebar-header h3 {
@@ -65,11 +108,6 @@ body {
   background: #334155;
 }
 
-.session-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
 .session-item {
   padding: 10px;
   border-radius: 8px;
@@ -81,6 +119,11 @@ body {
 
 .session-item:hover {
   background: #1e293b;
+}
+
+.session-item.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
 
 .session-title {
@@ -101,29 +144,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* ================= APP ================= */
-.app-container {
-  display: flex;
-  height: 100dvh;          /* not min-height */
-  position: relative;
-  background: linear-gradient(-45deg, #0f172a, #111827, #0e1a2b, #1e293b);
-  background-size: 400% 400%;
-  animation: gradientMove 30s ease infinite;
-  color: white;
-  overflow: hidden;        /* important */
-}
-
-.app-container::before {
-  content: "";
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%);
-  top: -150px;
-  right: -150px;
-  z-index: -1;
+  width: 100%;
 }
 
 /* ================= HEADER ================= */
@@ -131,28 +152,20 @@ body {
 .header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
-  position: relative;
+  justify-content: space-between;
+  padding: 18px 30px;
   background: linear-gradient(90deg, #0f172a, #0b1f3a);
   border-bottom: 1px solid rgba(255,255,255,0.08);
-  margin-top: 15px;
+  position: relative;
 }
 
-.session-item.active {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-}
-
-.logo-right {
-  position: absolute;
-  right: 30px;
-  top: 25px;
-  height: 70px;
-  width: 140px;
+.header-left {
+  width: 160px;
 }
 
 .title {
+  flex: 1;
+  text-align: center;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -161,21 +174,27 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.tagline {
+.logo-right {
+  height: 70px;
+  width: 140px;
+}
+
+.history-toggle {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #334155;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
   font-size: 13px;
-  opacity: 0.6;
-  margin-top: 5px;
+  transition: 0.2s ease;
+}
+
+.history-toggle:hover {
+  background: #334155;
 }
 
 /* ================= CHAT AREA ================= */
-
-.chat-area {
-  flex: 1;
-  padding: 30px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
 
 .chat-area {
   flex: 1;
@@ -195,9 +214,6 @@ body {
   opacity: 0.8;
 }
 
-.app-container.dark .welcome {
-  color: #cbd5e1;
-}
 /* ================= BUBBLES ================= */
 
 .bubble {
@@ -209,11 +225,6 @@ body {
   max-width: 75%;
   animation: fadeSlide 0.25s ease forwards;
   opacity: 0;
-}
-
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .user {
@@ -236,10 +247,10 @@ body {
   animation: dots 1.5s infinite steps(3);
 }
 
-@keyframes dots {
-  0% { content: " ."; }
-  33% { content: " .."; }
-  66% { content: " ..."; }
+.timestamp {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-top: 6px;
 }
 
 /* ================= TABLE ================= */
@@ -249,7 +260,7 @@ body {
   background: #0f172a;
   border: 1px solid #1e293b;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .table-scroll {
@@ -259,6 +270,7 @@ body {
 
 .table-scroll table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
   background: #0b1220;
 }
@@ -283,41 +295,7 @@ body {
   z-index: 2;
 }
 
-.table-scroll tr:hover {
-  background: rgba(255,255,255,0.03);
-}
-
-.row-info {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-bottom: 6px;
-}
-
-.table-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-}
-
-/* ================= BUTTONS ================= */
-
-.btn {
-  border: none;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: 0.2s ease;
-  font-size: 13px;
-}
-
-.download-btn {
-  background: #2563eb;
-  color: white;
-  padding: 6px 14px;
-}
-
-.download-btn:hover {
-  background: #1d4ed8;
-}
+/* ================= INPUT ================= */
 
 .input-box {
   display: flex;
@@ -343,11 +321,9 @@ body {
   background: linear-gradient(135deg, #38bdf8, #2563eb);
   color: white;
   font-weight: 600;
-}
-
-.input-box button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(56, 189, 248, 0.4);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 /* ================= CHART ================= */
@@ -362,91 +338,10 @@ body {
   overflow: hidden;
 }
 
-.recharts-tooltip-wrapper {
-  font-size: 12px;
-}
-
-/* ================= SQL ================= */
-
-.sql-box {
-  margin-top: 15px;
-  background: #020617;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-}
-
-pre {
-  color: #38bdf8;
-  overflow-x: auto;
-}
-
-/* ================= BUSINESS + SCOPE ================= */
-
-.business-selector {
-  margin: 10px auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.business-selector select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #1e293b;
-  color: white;
-  border: 1px solid #334155;
-  cursor: pointer;
-}
-
-.scope-box {
-  margin: 10px 20px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  line-height: 1.5;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  color: #cbd5e1;
-}
-
-.scope-box ul {
-  padding-left: 18px;
-  margin: 0;
-}
-
-.suggestion-chip {
-  margin-top: 12px;
-  padding: 10px 16px;
-  border-radius: 18px;
-  background: #1e293b;
-  color: #38bdf8;
-  cursor: pointer;
-  font-weight: 500;
-  transition: 0.2s ease;
-}
-
-.suggestion-chip:hover {
-  background: #334155;
-  transform: translateY(-2px);
-}
-
-/* ================= SCROLLBAR ================= */
-
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #0284c7;
-  border-radius: 10px;
-}
-
 /* ================= RESPONSIVE ================= */
 
 @media (max-width: 768px) {
   .chat-area {
-    margin: 10px;
     padding: 20px;
   }
 
@@ -462,8 +357,6 @@ pre {
   .logo-right {
     height: 45px;
     width: 90px;
-    right: 10px;
-    top: 10px;
   }
 
   .chart-wrapper {
@@ -482,11 +375,65 @@ pre {
     width: 100%;
   }
 }
-.timestamp {
-  font-size: 10px;
-  opacity: 0.5;
-  margin-top: 6px;
+
+/* ================= BUSINESS SELECTOR ================= */
+
+.business-selector {
+  margin: 12px auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 30px;
 }
+
+.business-selector label {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.business-selector select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: white;
+  border: 1px solid #334155;
+  cursor: pointer;
+}
+
+/* ================= BUSINESS SCOPE ================= */
+
+.scope-box {
+  margin: 10px 30px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #cbd5e1;
+}
+
+/* ================= SUGGESTION CHIP ================= */
+
+.suggestion-chip {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border-radius: 18px;
+  background: #1e293b;
+  color: #38bdf8;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s ease;
+  display: inline-block;
+}
+
+.suggestion-chip:hover {
+  background: #334155;
+  transform: translateY(-2px);
+}
+
+/* ================= SCROLL BUTTONS ================= */
+
 .scroll-buttons {
   position: fixed;
   right: 30px;
@@ -494,6 +441,7 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  z-index: 100;
 }
 
 .scroll-buttons button {
@@ -505,48 +453,67 @@ pre {
   background: #2563eb;
   color: white;
   font-size: 16px;
+  transition: 0.2s ease;
 }
 
 .scroll-buttons button:hover {
   background: #1d4ed8;
+  transform: translateY(-2px);
 }
-.app-container {
+
+/* ================= TABLE ACTIONS ================= */
+
+.table-actions {
   display: flex;
-  height: 100vh;
-  width: 100%;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 280px;
-  min-width: 260px;
-  background: #0f172a;
-  border-right: 1px solid #1e293b;
-  overflow-y: auto;
+.row-info {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 6px;
 }
 
-/* Main Content */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+/* ================= SQL BOX ================= */
+
+.sql-box {
+  margin-top: 15px;
+  background: #020617;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
-/* When history hidden */
-.app-container.full-width .main-content {
-  width: 100%;
+.sql-box summary {
+  cursor: pointer;
+  font-weight: 500;
 }
 
-.app-container.full-width .sidebar {
-  display: none;
+.sql-box button {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #38bdf8;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
 }
-.data-panel {
-  width: 100%;
+
+.sql-box button:hover {
+  background: #334155;
+}
+
+pre {
+  color: #38bdf8;
   overflow-x: auto;
+  font-size: 13px;
 }
 
-.table-scroll table {
-  width: 100%;
-  min-width: 800px;
+/* ================= QUERY TITLE ================= */
+
+.query-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #38bdf8;
 }
