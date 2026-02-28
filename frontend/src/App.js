@@ -328,6 +328,22 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
   const BAR_COLORS = ["#38bdf8", "#2563eb", "#0ea5e9", "#1d4ed8"];
 
+  const copyTableToClipboard = (data) => {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0]);
+
+    const rows = [
+      headers.join("\t"), // header row
+      ...data.map(row =>
+        headers.map(field => row[field] ?? "").join("\t")
+      )
+    ];
+
+    const tableString = rows.join("\n");
+
+    navigator.clipboard.writeText(tableString);
+  };
 
   const renderMessage = (msg, index) => {
   if (msg.role === "user") {
@@ -390,7 +406,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         <div className="table-actions">
           <button
           className="download-btn"
-          onClick={() => copyToClipboard(JSON.stringify(msg.data, null, 2))}
+          onClick={() => copyTableToClipboard(msg.data)}
         >
           📋 Copy Table
         </button>
