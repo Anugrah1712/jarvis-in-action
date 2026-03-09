@@ -52,7 +52,8 @@ GENIE_SPACES = {
     "homeloan": "01f108a734ff131fbd425fd63d15fe9d",
     "onboarding": "01f1116691fc1ccaa306cdce8b4a4dd0",
     "heart":"01f1148ad2f41d808fec122913be243a",
-    "two-wheeler":"01f10bd0fb9b15a396eb61460dbaa282"
+    "two-wheeler":"01f10bd0fb9b15a396eb61460dbaa282",
+    "plcs":"01f0a9c7883f1f7780ccdb7bb3fbabc4"
 }
 
 BUSINESS_NAMES = {
@@ -60,7 +61,8 @@ BUSINESS_NAMES = {
     "homeloan": "Home Loan",
     "onboarding": "Onboarding",
     "heart":"Heart",
-    "two-wheeler":"Two-Wheeler"
+    "two-wheeler":"Two-Wheeler",
+    "plcs":"PLCS"
 }
 
 BUSINESS_SCOPES = {
@@ -68,7 +70,8 @@ BUSINESS_SCOPES = {
     "homeloan": "For Home Loan, Jarvis is currently integrated with D360 clickstream, current offer base, current customer split, bureau, AA/CALL US/CPR journey leads, MAU, DRR Lead master, DRR disbursal master and PL WIP/Reject/NI/NE Leads.",
     "onboarding": "For Onboarding, Jarvis is currently integrated with session-level and user-level onboarding funnels, including App Launch, OTP, MPIN, Biometric, and Homepage stages.It tracks journey-wise (Signup/Signin) conversions, drop-offs, and Task Success Ratios (TSRs) across critical authentication steps.The setup supports platform, AppVersion, and user-type analysis with validated deduplication and data sanity checks",
     "heart": "For Heart, Jarvis is currently integrated with accurate monitoring of core app performance metrics including MAU, DAU, App Launches, Gross Base (BTD GROSS SIGNUP), Net Base (BTD NET SIGNUP), and user stickiness to track growth and engagement trends. It also provides business-wise MAU contribution insights (%MAU by product/category).",
-    "two-wheeler":"For Two-Wheeler, Jarvis provides a comprehensive view of the Two-Wheeler (TW) loan business journey, leads generation, disbursals, clickstream behavior, offer Base, and customer demographics."
+    "two-wheeler":"For Two-Wheeler, Jarvis provides a comprehensive view of the Two-Wheeler (TW) loan business journey, leads generation, disbursals, clickstream behavior, offer Base, and customer demographics.",
+    "plcs":"For PLCS, Jarvis is currently integrated with comprehensive monitoring of offer and app performance metrics including current and monthly snapshots of the offer base, product/location/market-wise offer distribution, and app presence through Gross & Net App Base from PL offers along with MAU. It also tracks app installation and uninstallation trends with Fresh vs Repeat, Business vs Media_Source bifurcation, and provides detailed PL clickstream journey insights across entrypoints, PDP view/submit, Form 1 view/submit, and subsequent form stages. Homepage performance is monitored through views, loads, and clicks, while leads and disbursal tracking ensures visibility into conversion outcomes. Additionally, bureau metrics such as CIBIL scores and Off-Us disbursals are captured. Note: SFDC leads view and Web traffic metrics are currently not included in the scope of this Genie Space."
 }
 
 
