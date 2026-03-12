@@ -60,7 +60,7 @@ BUSINESS_NAMES = {
     "downloads": "Downloads & Engagement",
     "homeloan": "Home Loan",
     "onboarding": "Onboarding",
-    "heart":"Heart",
+    "heart":"H.E.A.R.T.",
     "two-wheeler":"Two-Wheeler",
     "plcs":"Personal-Loan"
 }

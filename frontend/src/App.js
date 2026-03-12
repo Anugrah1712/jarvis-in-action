@@ -18,6 +18,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Copy } from "lucide-react";
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -356,11 +357,30 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
   const renderMessage = (msg, index) => {
   if (msg.role === "user") {
     return (
-      <div key={index} className="user bubble fade-in">
-        {msg.content}
-        <div className="timestamp">
-          {msg.timestamp?.toLocaleTimeString()}
+      <div key={index} className="message-wrapper user-wrapper">
+
+        <div className="user bubble fade-in">
+
+          <div className="message-content">
+            {msg.content}
+          </div>
+
+          <div className="timestamp">
+            {msg.timestamp?.toLocaleTimeString()}
+          </div>
+
         </div>
+
+        <div className="message-actions">
+          <button
+            className="copy-btn"
+            onClick={() => copyToClipboard(msg.content)}
+          >
+            <Copy size={14} />
+            <span>Copy</span>
+          </button>
+        </div>
+
       </div>
     );
   }
@@ -722,7 +742,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
         {loading && (
           <div className="assistant bubble typing">
-            Jarvis is thinking...
+            Jarvis is thinking 
           </div>
         )}
 

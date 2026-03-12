@@ -527,3 +527,39 @@ pre {
   overflow-y: auto;
   box-sizing: border-box;
 }
+
+.user {
+  position: relative;
+}
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+
+/* action row under bubble */
+.message-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+
+/* copy button */
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: 0.2s;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+  color: #38bdf8;
+}
