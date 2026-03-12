@@ -30,6 +30,7 @@ function App() {
   const [sessions, setSessions] = useState([]);
   const chatRef = useRef(null);
   const [showHistory, setShowHistory] = useState(true);
+  const [expandScope, setExpandScope] = useState(false);
   useEffect(() => {
   const fetchBusinesses = async () => {
     try {
@@ -92,7 +93,13 @@ const exportChart = (id) => {
   }, [messages]);
 
   // Format numbers with commas
-  const formatValue = (value, granularity = "daily") => {
+  const formatValue = (value, granularity = "daily", columnName = "") => {
+
+    // Skip formatting for month columns
+    if (columnName.toLowerCase().includes("month")) {
+      return value;
+    }
+
     if (!isNaN(value) && value !== null && value !== "") {
       return Number(value).toLocaleString();
     }
@@ -465,7 +472,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
                         key={j}
                         className={isNumeric ? "numeric-column" : ""}
                       >
-                        {formatValue(row[key], granularity)}
+                        {formatValue(row[key], granularity, key)}
                       </td>
                     );
                   })}
@@ -680,10 +687,21 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
       </div>
 
       {selectedBusinessObj?.scope && (
-        <div className="scope-box">
-          {selectedBusinessObj.scope}
-        </div>
-      )}
+      <div className="scope-box">
+        {expandScope
+          ? selectedBusinessObj.scope
+          : selectedBusinessObj.scope.slice(0, 120) + "..."}
+
+        {selectedBusinessObj.scope.length > 120 && (
+          <span
+            className="read-more"
+            onClick={() => setExpandScope(!expandScope)}
+          >
+            {expandScope ? " Read less" : " Read more"}
+          </span>
+        )}
+      </div>
+    )}
 
       {/* CHAT AREA */}
       <div className="chat-area" ref={chatRef}>
@@ -713,23 +731,29 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
       {/* INPUT */}
       <div className="input-box">
-        <input
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ask Jarvis something magical..."
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
+      <textarea
+        className="chat-input"
+        value={prompt}
+        rows={1}
+        placeholder="Ask Jarvis something magical..."
+        onChange={(e) => {
+          setPrompt(e.target.value);
 
-        <button
-          onClick={(e) => {
+          // Auto expand textarea
+          e.target.style.height = "auto";
+          e.target.style.height = e.target.scrollHeight + "px";
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
-          }}
+          }
+        }}
+      />
+
+        <button
+          type="button"
+          onClick={() => sendMessage()}
           disabled={loading}
         >
           {loading ? "Sending..." : "Send"}

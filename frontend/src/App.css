@@ -304,17 +304,6 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.input-box input {
-  flex: 1;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  background: #1e293b;
-  color: white;
-}
-
 .input-box button {
   margin-left: 10px;
   padding: 12px 18px;
@@ -367,7 +356,7 @@ body {
     flex-direction: column;
   }
 
-  .input-box input {
+  .input-box textarea {
     margin-bottom: 10px;
   }
 
@@ -516,4 +505,25 @@ pre {
   font-weight: 600;
   margin-bottom: 8px;
   color: #38bdf8;
+}
+
+.read-more {
+  color: #007bff;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.chat-input {
+  width: 100%;
+  min-height: 40px;
+  max-height: 140px;
+  resize: none;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  outline: none;
+  line-height: 1.5;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
