@@ -52,7 +52,7 @@ GENIE_SPACES = {
     "homeloan": "01f108a734ff131fbd425fd63d15fe9d",
     "onboarding": "01f1116691fc1ccaa306cdce8b4a4dd0",
     "heart":"01f1148ad2f41d808fec122913be243a",
-    "two-wheeler":"01f10bd0fb9b15a396eb61460dbaa282",
+    "two-wheeler":"01f11baeea971d9e84a06c8ddc22500f",
     "plcs":"01f0a9c7883f1f7780ccdb7bb3fbabc4"
 }
 
