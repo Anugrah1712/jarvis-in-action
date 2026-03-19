@@ -54,7 +54,7 @@ GENIE_SPACES = {
     "heart":"01f1148ad2f41d808fec122913be243a",
     "two-wheeler":"01f11baeea971d9e84a06c8ddc22500f",
     "plcs":"01f0a9c7883f1f7780ccdb7bb3fbabc4",
-    "app-monetization":"01f112d39b2e18718ae6e155ebb8bd37"
+    "app-monetization":"01f1237f60c211c290361639e0c78f0b"
 }
 
 BUSINESS_NAMES = {
