@@ -55,6 +55,9 @@ GENIE_SPACES = {
     "two-wheeler":"01f11baeea971d9e84a06c8ddc22500f",
     "plcs":"01f0a9c7883f1f7780ccdb7bb3fbabc4",
     "app-monetization":"01f1237f60c211c290361639e0c78f0b",
+    "tractor":"01f125c393ac1a45842201c962352eac",
+    "ncf":"01f1188cda2e179d8c058e42ecaadee1",
+    "ucf":"01f1212b517f1522911ad865de8b3868",
 }
 
 BUSINESS_NAMES = {
@@ -64,7 +67,10 @@ BUSINESS_NAMES = {
     "heart":"H.E.A.R.T.",
     "two-wheeler":"Two-Wheeler",
     "plcs":"Personal-Loan",
-    "app-monetization":"App-Monetization"
+    "app-monetization":"App-Monetization",
+    "tractor":"Tractor",
+    "ncf":"NCF",
+    "ucf":"UCF",
 }
 
 BUSINESS_SCOPES = {
@@ -74,7 +80,10 @@ BUSINESS_SCOPES = {
     "heart": "For Heart, Jarvis is currently integrated with accurate monitoring of core app performance metrics including MAU, DAU, App Launches, Gross Base (BTD GROSS SIGNUP), Net Base (BTD NET SIGNUP), and user stickiness to track growth and engagement trends. It also provides business-wise MAU contribution insights (%MAU by product/category).",
     "two-wheeler":"For Two-Wheeler, Jarvis provides a comprehensive view of the Two-Wheeler (TW) loan business journey, leads generation, disbursals, clickstream behavior, offer Base, and customer demographics.",
     "plcs":"For Personal-Loan, Jarvis is currently integrated with comprehensive monitoring of offer and app performance metrics including current and monthly snapshots of the offer base, product/location/market-wise offer distribution, and app presence through Gross & Net App Base from PL offers along with MAU. It also tracks app installation and uninstallation trends with Fresh vs Repeat, Business vs Media_Source bifurcation, and provides detailed PL clickstream journey insights across entrypoints, PDP view/submit, Form 1 view/submit, and subsequent form stages. Homepage performance is monitored through views, loads, and clicks, while leads and disbursal tracking ensures visibility into conversion outcomes. Additionally, bureau metrics such as CIBIL scores and Off-Us disbursals are captured. Note: SFDC leads view and Web traffic metrics are currently not included in the scope of this Genie Space.",
-    "app-monetization":"For APP Monetization, Jarvis is currently integrated with cohorts uploaded on Vmax for ad campaigns, Vmax logs data to track the campaign performance and B2B Dealer data mapped against the customers."
+    "app-monetization":"For APP Monetization, Jarvis is currently integrated with cohorts uploaded on Vmax for ad campaigns, Vmax logs data to track the campaign performance and B2B Dealer data mapped against the customers.",
+    "tractor":"For Tractor,Jarvis is currently integrated with comprehensive view of the digital acquisition, engagement, and loan disbursal journey for tractor and related products, enabling marketing, funnel, app usage, customer profiling, and disbursement performance analysis.",
+    "ncf":"For NCF,Jarvis is currently integrated with comprehensive tracking and analysis of the New Car Finance (NCF) customer journey—from marketing and lead generation to disbursal and user behavior—across both digital and offline channels.",
+    "ucf":"For UCF,Jarvis is currently integrated with comprehensive data environment to analyze the Used Car Finance (UCF) business funnel, enabling tracking from digital offer base through lead generation, app engagement, loan disbursal (digital/offline), and customer demographics",
 }
 
 # ==============================
