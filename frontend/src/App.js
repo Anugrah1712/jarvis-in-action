@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./App.css";
-import logo from "./bajajlogo.png";
+// import logo from "./bajajlogo.png";
 import { useMemo } from "react";
 import html2canvas from "html2canvas";
 import {
@@ -673,6 +673,8 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
     <div className="main-content">
 
       <header className="header">
+
+        {/* LEFT */}
         <div className="header-left">
           <button
             className="history-toggle"
@@ -682,29 +684,29 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
           </button>
         </div>
 
-        <h1 className="title">JARVIS</h1>
+        {/* CENTER */}
+        <div className="header-center">
+          <label>Select Business:</label>
+          <select
+            value={selectedBusiness}
+            onChange={(e) => {
+              setSelectedBusiness(e.target.value);
+              setConversationId(null);
+              setMessages([]);
+            }}
+          >
+            {businesses.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <img src={logo} className="logo-right" alt="logo" />
+        {/* RIGHT (empty spacer for balance) */}
+        <div className="header-right" />
+
       </header>
-
-      {/* BUSINESS SELECTOR */}
-      <div className="business-selector">
-        <label>Select Business:</label>
-        <select
-          value={selectedBusiness}
-          onChange={(e) => {
-            setSelectedBusiness(e.target.value);
-            setConversationId(null);
-            setMessages([]);
-          }}
-        >
-          {businesses.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {selectedBusinessObj?.scope && (
       <div className="scope-box">
@@ -727,7 +729,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
       <div className="chat-area" ref={chatRef}>
         {messages.length === 0 && (
           <div className="welcome">
-            Hello! Jarvis here 👋
+            Hello!👋
             <br />
             How can I assist you today?
           </div>
@@ -742,7 +744,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
         {loading && (
           <div className="assistant bubble typing">
-            Jarvis is thinking 
+            I'm thinking 
           </div>
         )}
 
@@ -755,7 +757,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         className="chat-input"
         value={prompt}
         rows={1}
-        placeholder="Ask Jarvis something magical..."
+        placeholder="Ask me something magical..."
         onChange={(e) => {
           setPrompt(e.target.value);
 
