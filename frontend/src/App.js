@@ -363,7 +363,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
   };
   const downloadFullData = async (query) => {
   try {
-    const res = await axios.post("/download", {
+    const res = await axios.post("/api/download", {
       query: query,
     }, { timeout: 0 });
 
