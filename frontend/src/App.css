@@ -591,3 +591,97 @@ pre {
   opacity: 1;
   color: #38bdf8;
 }
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 200;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+  }
+
+  .app-container.full-width .sidebar {
+    transform: translateX(-100%);
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-area {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    height: auto;
+    gap: 8px;
+  }
+
+  .header-center {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .scroll-buttons {
+    right: 10px;
+    bottom: 90px;
+  }
+
+  .scroll-buttons button {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-scroll th,
+  .table-scroll td {
+    font-size: 11px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .input-box {
+    padding: 10px;
+  }
+}
+
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 150;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .app-container:not(.full-width) .sidebar {
+    transform: translateX(0);
+  }
+}@media (max-width: 768px) {
+  .scope-box {
+    margin: 10px 12px;
+    font-size: 13px;
+  }
+}@media (max-width: 768px) {
+  .header-center {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .header-center label {
+    font-size: 12px;
+  }
+}

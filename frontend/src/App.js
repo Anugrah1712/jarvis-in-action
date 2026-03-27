@@ -32,6 +32,7 @@ function App() {
   const chatRef = useRef(null);
   const [showHistory, setShowHistory] = useState(true);
   const [expandScope, setExpandScope] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
   const fetchBusinesses = async () => {
     try {
@@ -85,6 +86,14 @@ const exportChart = (id) => {
     link.click();
   });
 };
+useEffect(() => {
+  const handleResize = () => {
+    setIsMobile(window.innerWidth <= 768);
+  };
+
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
 
   // Auto-scroll
   useEffect(() => {
@@ -325,7 +334,6 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
   ];
 
   const csvString = csvRows.join("\n");
-
   const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -353,6 +361,20 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
     navigator.clipboard.writeText(tableString);
   };
+  const downloadFullData = async (query) => {
+  try {
+    const res = await axios.post("/download", {
+      query: query,
+    }, { timeout: 0 });
+
+    const fullData = res.data.data;
+
+    downloadCSV(fullData, `jarvis_full_export_${Date.now()}.csv`);
+
+  } catch (err) {
+    console.error("Download failed", err);
+  }
+};
 
   const renderMessage = (msg, index) => {
   if (msg.role === "user") {
@@ -433,22 +455,18 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
         <div className="table-actions">
           <button
-          className="download-btn"
-          onClick={() => copyTableToClipboard(msg.data)}
-        >
-          📋 Copy Table
-        </button>
+            className="download-btn"
+            onClick={() => copyTableToClipboard(msg.data)}
+          >
+            📋 Copy Table
+          </button>
 
           <button
             className="download-btn"
-            onClick={() =>
-              downloadCSV(
-                msg.data,
-                `jarvis_export_${Date.now()}.csv`
-              )
-            }
+            disabled={!msg.generated_code}
+            onClick={() => downloadFullData(msg.generated_code)}
           >
-            ⬇ Download CSV
+            ⬇ Download Full Data
           </button>
         </div>
 
@@ -636,7 +654,7 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 };
 
   return (
-  <div className={`app-container dark ${!showHistory ? "full-width" : ""}`}>
+  <div className={`app-container dark ${!showHistory && isMobile ? "full-width" : ""}`}>
     
     {/* SIDEBAR */}
     {showHistory && (
@@ -667,6 +685,12 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
         ))}
       </div>
   </div>
+)}
+{showHistory && isMobile && (
+  <div
+    className="mobile-overlay"
+    onClick={() => setShowHistory(false)}
+  />
 )}
 
     {/* MAIN CHAT AREA */}
