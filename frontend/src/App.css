@@ -175,6 +175,16 @@ body {
 .header-right {
   flex: 1;
 }
+select {
+  background-color: #1e293b;
+  color: white;
+}
+
+select option {
+  background-color: #0f172a;
+  color: white;
+}
+
 .title {
   flex: 1;
   text-align: center;
