@@ -133,7 +133,29 @@ def get_query_result(w, statement_id):
         print("❌ Query result pagination error:", e)
         return []
 
+@app.post("/api/download")
+def download_full_data(req: dict):
+    w = get_client()
 
+    query = req.get("query")
+
+    try:
+        statement = w.statement_execution.execute_statement(
+            statement=query,
+            warehouse_id="66d48345dafda69f",
+            wait_timeout="60s"
+        )
+
+        statement_id = statement.statement_id
+
+        data = get_query_result(w, statement_id)
+
+        return {"data": data}
+
+    except Exception as e:
+        print("❌ Download error:", e)
+        raise HTTPException(status_code=500, detail="Download failed")
+    
 def process_genie_response(w, response):
     output = []
 
@@ -251,7 +273,7 @@ def follow_up(req: FollowUpRequest):
 # SERVE REACT BUILD
 # ==============================
 
-app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
+app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
