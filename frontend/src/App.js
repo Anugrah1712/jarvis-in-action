@@ -4,6 +4,7 @@ import "./App.css";
 // import logo from "./bajajlogo.png";
 import { useMemo } from "react";
 import html2canvas from "html2canvas";
+import { Mic } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -33,6 +34,38 @@ function App() {
   const [showHistory, setShowHistory] = useState(true);
   const [expandScope, setExpandScope] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  useEffect(() => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    console.warn("Speech Recognition not supported");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = "en-IN"; // you can change
+
+  recognition.onresult = (event) => {
+    let transcript = "";
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+
+    setPrompt(transcript);
+  };
+
+  recognition.onend = () => {
+    setListening(false);
+  };
+
+  recognitionRef.current = recognition;
+}, []);
   useEffect(() => {
   const fetchBusinesses = async () => {
     try {
@@ -53,6 +86,19 @@ function App() {
 
   const scrollToTop = () => {
   chatRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+};
+const startListening = () => {
+  if (recognitionRef.current) {
+    setListening(true);
+    recognitionRef.current.start();
+  }
+};
+
+const stopListening = () => {
+  if (recognitionRef.current) {
+    recognitionRef.current.stop();
+    setListening(false);
+  }
 };
 
   const scrollToBottom = () => {
@@ -777,25 +823,34 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
       {/* INPUT */}
       <div className="input-box">
-      <textarea
-        className="chat-input"
-        value={prompt}
-        rows={1}
-        placeholder="Ask me something magical..."
-        onChange={(e) => {
-          setPrompt(e.target.value);
+        <textarea
+          className="chat-input"
+          value={prompt}
+          rows={1}
+          placeholder="Ask me something magical..."
+          onChange={(e) => {
+            setPrompt(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = e.target.scrollHeight + "px";
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
+        />
 
-          // Auto expand textarea
-          e.target.style.height = "auto";
-          e.target.style.height = e.target.scrollHeight + "px";
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-          }
-        }}
-      />
+        {/* 🎤 MIC BUTTON */}
+        <button
+          className={`mic-btn ${listening ? "active" : ""}`}
+          onMouseDown={startListening}
+          onMouseUp={stopListening}
+          onTouchStart={startListening}
+          onTouchEnd={stopListening}
+        >
+          <Mic size={18} />
+        </button>
 
         <button
           type="button"

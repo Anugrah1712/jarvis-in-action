@@ -685,3 +685,26 @@ pre {
     font-size: 12px;
   }
 }
+.mic-btn {
+  margin-left: 8px;
+  padding: 10px;
+  background: #1e293b;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+.mic-btn:hover {
+  background: #334155;
+}
+
+.mic-btn.active {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
