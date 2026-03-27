@@ -273,7 +273,7 @@ def follow_up(req: FollowUpRequest):
 # SERVE REACT BUILD
 # ==============================
 
-app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
+app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
