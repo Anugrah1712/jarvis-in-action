@@ -57,18 +57,22 @@ GENIE_SPACES = {
     "tractor":"01f125c393ac1a45842201c962352eac",
     "ncf":"01f1188cda2e179d8c058e42ecaadee1",
     "ucf":"01f1212b517f1522911ad865de8b3868",
+    "demat":"01f11bb3dfe31a56b87baa63fe46fc6f",
+    "mf":"01f12120d7c61acda7d80b923e11dd42",
 }
 
 BUSINESS_NAMES = {
-    "downloads": "Downloads & Engagement",
-    "homeloan": "Home Loan",
-    "onboarding": "Onboarding",
-    "two-wheeler":"Two-Wheeler",
-    "plcs":"Personal-Loan",
-    "app-monetization":"App-Monetization",
-    "tractor":"Tractor",
-    "ncf":"NCF",
-    "ucf":"UCF",
+    "downloads": "DOWNLOADS, H.E.A.R.T. & ENGAGEMENT",
+    "homeloan": "HOME LOAN",
+    "onboarding": "ONBOARDING",
+    "two-wheeler":"TWO-WHEELERS",
+    "plcs":"PEROSNAL-LOAN",
+    "app-monetization":"APP-MONETIZATION",
+    "tractor":"Tractor LOAN",
+    "ncf":"NCF LOAN",
+    "ucf":"UCF LOAN",
+    "demat":"DEMAT",
+    "mf":"MUTUAL FUND"
 }
 
 BUSINESS_SCOPES = {
@@ -81,6 +85,8 @@ BUSINESS_SCOPES = {
     "tractor":"For Tractor,Jarvis is currently integrated with comprehensive view of the digital acquisition, engagement, and loan disbursal journey for tractor and related products, enabling marketing, funnel, app usage, customer profiling, and disbursement performance analysis.",
     "ncf":"For NCF,Jarvis is currently integrated with comprehensive tracking and analysis of the New Car Finance (NCF) customer journey—from marketing and lead generation to disbursal and user behavior—across both digital and offline channels.",
     "ucf":"For UCF,Jarvis is currently integrated with comprehensive data environment to analyze the Used Car Finance (UCF) business funnel, enabling tracking from digital offer base through lead generation, app engagement, loan disbursal (digital/offline), and customer demographics",
+    "demat":"for DEMAT,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data, cleanroom environments, and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
+    "mf":"for MF,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
 }
 
 # ==============================
@@ -143,7 +149,7 @@ def download_full_data(req: dict):
         statement = w.statement_execution.execute_statement(
             statement=query,
             warehouse_id="66d48345dafda69f",
-            wait_timeout="60s"
+            wait_timeout="50s"
         )
 
         statement_id = statement.statement_id
