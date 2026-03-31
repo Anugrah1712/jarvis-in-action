@@ -185,17 +185,17 @@ useEffect(() => {
   setMessages(session.messages);
   setSelectedBusiness(session.business);
 };
-const pollForResponse = async (conversationId, business) => {
+
+const pollForResponse = async (conversationId, messageId, business) => {
   const startTime = Date.now();
 
   while (true) {
-    // ⛔ Safety timeout (3 min)
     if (Date.now() - startTime > 180000) {
       throw new Error("Timeout");
     }
 
     const res = await axios.get(`/status/${conversationId}`, {
-      params: { business },
+      params: { business, message_id: messageId }, // ✅ ADD THIS
     });
 
     if (res.data.status === "done") {
@@ -206,7 +206,6 @@ const pollForResponse = async (conversationId, business) => {
       throw new Error("Query failed");
     }
 
-    // ⏳ wait 2 sec before next check
     await new Promise((r) => setTimeout(r, 2000));
   }
 };
@@ -231,6 +230,7 @@ const pollForResponse = async (conversationId, business) => {
   try {
     let response;
     let activeConversationId = conversationId;
+    let activeMessageId = null;
 
     if (!conversationId) {
       response = await axios.post(`/start`, {
@@ -239,7 +239,7 @@ const pollForResponse = async (conversationId, business) => {
       });
 
       activeConversationId = response.data.conversation_id;
-      setConversationId(activeConversationId);
+      activeMessageId = response.data.message_id;
 
       setSessions((prev) => [
         {
@@ -262,6 +262,7 @@ const pollForResponse = async (conversationId, business) => {
     // ✅ THIS IS CORRECT
     const genieResponses = await pollForResponse(
       activeConversationId,
+      activeMessageId,
       selectedBusiness
     );
 

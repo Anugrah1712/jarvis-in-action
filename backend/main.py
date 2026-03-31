@@ -247,13 +247,11 @@ def start_conversation(req: PromptRequest):
     space_id = get_space_id(req.business)
 
     try:
-        conversation = w.genie.start_conversation(
-            space_id,
-            req.prompt
-        )
+        convo = w.genie.start_conversation(space_id, req.prompt)
 
         return {
-            "conversation_id": conversation.conversation_id,
+            "conversation_id": convo.conversation_id,
+            "message_id": convo.message_id,   # ✅ ADD THIS
             "status": "processing"
         }
 
@@ -278,6 +276,7 @@ def follow_up(req: FollowUpRequest):
 
         return {
             "conversation_id": msg.conversation_id,
+            "message_id": msg.message_id,   # ✅ ADD THIS
             "status": "processing"
         }
 
@@ -286,21 +285,20 @@ def follow_up(req: FollowUpRequest):
         raise HTTPException(status_code=500, detail="Failed to process follow-up")
     
 @app.get("/status/{conversation_id}")
-def check_status(conversation_id: str, business: str):
+def check_status(conversation_id: str, message_id: str, business: str):
     w = get_client()
     space_id = get_space_id(business)
 
     try:
         msg = w.genie.get_message(
             space_id,
-            conversation_id
+            conversation_id,
+            message_id   # ✅ REQUIRED
         )
 
-        # 🔄 Still processing
         if msg.status not in ["COMPLETED", "FAILED"]:
             return {"status": "processing"}
 
-        # ❌ Failed
         if msg.status == "FAILED":
             return {
                 "status": "failed",
@@ -310,7 +308,6 @@ def check_status(conversation_id: str, business: str):
                 }]
             }
 
-        # ✅ Completed
         return {
             "status": "done",
             "response": process_genie_response(w, msg)
