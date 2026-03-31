@@ -142,25 +142,36 @@ def get_query_result(w, statement_id):
 @app.post("/api/download")
 def download_full_data(req: dict):
     w = get_client()
-
     query = req.get("query")
 
     try:
         statement = w.statement_execution.execute_statement(
             statement=query,
-            warehouse_id="66d48345dafda69f",
-            wait_timeout="50s"
+            warehouse_id="66d48345dafda69f"
         )
 
         statement_id = statement.statement_id
 
+        # 🔥 WAIT until query completes
+        while True:
+            status = w.statement_execution.get_statement(statement_id)
+
+            if status.status.state == "SUCCEEDED":
+                break
+
+            if status.status.state in ["FAILED", "CANCELED"]:
+                raise Exception("Query execution failed")
+
+        # ✅ Now safely fetch data
         data = get_query_result(w, statement_id)
+
+        print(f"✅ Rows fetched: {len(data)}")
 
         return {"data": data}
 
     except Exception as e:
         print("❌ Download error:", e)
-        raise HTTPException(status_code=500, detail="Download failed")
+        raise HTTPException(status_code=500, detail=str(e))
     
 def process_genie_response(w, response):
     output = []
@@ -236,14 +247,14 @@ def start_conversation(req: PromptRequest):
     space_id = get_space_id(req.business)
 
     try:
-        conversation = w.genie.start_conversation_and_wait(
+        conversation = w.genie.start_conversation(
             space_id,
             req.prompt
         )
 
         return {
             "conversation_id": conversation.conversation_id,
-            "response": process_genie_response(w, conversation)
+            "status": "processing"
         }
 
     except Exception as e:
@@ -253,27 +264,61 @@ def start_conversation(req: PromptRequest):
 # ==============================
 # FOLLOW UP MESSAGE
 # ==============================
-
 @app.post("/followup")
 def follow_up(req: FollowUpRequest):
     w = get_client()
     space_id = get_space_id(req.business)
 
     try:
-        follow_up_msg = w.genie.create_message_and_wait(
+        msg = w.genie.create_message(
             space_id,
             req.conversation_id,
             req.prompt
         )
 
         return {
-            "conversation_id": follow_up_msg.conversation_id,
-            "response": process_genie_response(w, follow_up_msg)
+            "conversation_id": msg.conversation_id,
+            "status": "processing"
         }
 
     except Exception as e:
         print("❌ Follow-up error:", e)
         raise HTTPException(status_code=500, detail="Failed to process follow-up")
+    
+@app.get("/status/{conversation_id}")
+def check_status(conversation_id: str, business: str):
+    w = get_client()
+    space_id = get_space_id(business)
+
+    try:
+        conversation = w.genie.get_conversation(
+            space_id,
+            conversation_id
+        )
+
+        # 🔥 If still running
+        if conversation.status not in ["COMPLETED", "FAILED"]:
+            return {"status": "processing"}
+
+        # ❌ Failed case
+        if conversation.status == "FAILED":
+            return {
+                "status": "failed",
+                "response": [{
+                    "type": "text",
+                    "content": "⚠️ Query failed. Please try again."
+                }]
+            }
+
+        # ✅ Completed
+        return {
+            "status": "done",
+            "response": process_genie_response(w, conversation)
+        }
+
+    except Exception as e:
+        print("❌ Status check error:", e)
+        raise HTTPException(status_code=500, detail="Status check failed")
 
 # ==============================
 # SERVE REACT BUILD

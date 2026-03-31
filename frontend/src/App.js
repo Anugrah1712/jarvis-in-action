@@ -185,6 +185,31 @@ useEffect(() => {
   setMessages(session.messages);
   setSelectedBusiness(session.business);
 };
+const pollForResponse = async (conversationId, business) => {
+  const startTime = Date.now();
+
+  while (true) {
+    // ⛔ Safety timeout (3 min)
+    if (Date.now() - startTime > 180000) {
+      throw new Error("Timeout");
+    }
+
+    const res = await axios.get(`/status/${conversationId}`, {
+      params: { business },
+    });
+
+    if (res.data.status === "done") {
+      return res.data.response;
+    }
+
+    if (res.data.status === "failed") {
+      throw new Error("Query failed");
+    }
+
+    // ⏳ wait 2 sec before next check
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+};
 
   const sendMessage = async (customText = null) => {
   if (loading) return;
@@ -208,14 +233,10 @@ useEffect(() => {
     let activeConversationId = conversationId;
 
     if (!conversationId) {
-      response = await axios.post(
-        `/start`,
-        {
-          prompt: textToSend,
-          business: selectedBusiness,
-        },
-        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
-      );
+      response = await axios.post(`/start`, {
+        prompt: textToSend,
+        business: selectedBusiness,
+      });
 
       activeConversationId = response.data.conversation_id;
       setConversationId(activeConversationId);
@@ -231,18 +252,19 @@ useEffect(() => {
         ...prev,
       ]);
     } else {
-      response = await axios.post(
-        `/followup`,
-        {
-          conversation_id: conversationId,
-          prompt: textToSend,
-          business: selectedBusiness,
-        },
-        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
-      );
+      response = await axios.post(`/followup`, {
+        conversation_id: conversationId,
+        prompt: textToSend,
+        business: selectedBusiness,
+      });
     }
 
-    const genieResponses = response.data.response;
+    // ✅ THIS IS CORRECT
+    const genieResponses = await pollForResponse(
+      activeConversationId,
+      selectedBusiness
+    );
+
     let formatted = [];
 
     genieResponses.forEach((res) => {
@@ -299,7 +321,9 @@ useEffect(() => {
         type: "text",
         timestamp: new Date(),
         content:
-          "⚠️ Genie encountered an issue while processing your query. Please try again.",
+          error.message === "Timeout"
+          ? "⏳ Query is taking too long. Please try a smaller query."
+          : "⚠️ Something went wrong. Please try again.",
       },
     ]);
   } finally {
@@ -407,18 +431,28 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
     navigator.clipboard.writeText(tableString);
   };
-  const downloadFullData = async (query) => {
+const downloadFullData = async (query) => {
   try {
+    console.log("📥 Download query:", query);
+
     const res = await axios.post("/api/download", {
       query: query,
     }, { timeout: 0 });
 
     const fullData = res.data.data;
 
+    console.log("📊 Rows received:", fullData?.length);
+
+    if (!fullData || fullData.length === 0) {
+      alert("⚠️ No data returned from backend");
+      return;
+    }
+
     downloadCSV(fullData, `jarvis_full_export_${Date.now()}.csv`);
 
   } catch (err) {
-    console.error("Download failed", err);
+    console.error("❌ Download failed", err);
+    alert("Download failed. Check console.");
   }
 };
 
