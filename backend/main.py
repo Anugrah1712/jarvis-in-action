@@ -291,17 +291,17 @@ def check_status(conversation_id: str, business: str):
     space_id = get_space_id(business)
 
     try:
-        conversation = w.genie.get_conversation(
+        msg = w.genie.get_message(
             space_id,
             conversation_id
         )
 
-        # 🔥 If still running
-        if conversation.status not in ["COMPLETED", "FAILED"]:
+        # 🔄 Still processing
+        if msg.status not in ["COMPLETED", "FAILED"]:
             return {"status": "processing"}
 
-        # ❌ Failed case
-        if conversation.status == "FAILED":
+        # ❌ Failed
+        if msg.status == "FAILED":
             return {
                 "status": "failed",
                 "response": [{
@@ -313,12 +313,12 @@ def check_status(conversation_id: str, business: str):
         # ✅ Completed
         return {
             "status": "done",
-            "response": process_genie_response(w, conversation)
+            "response": process_genie_response(w, msg)
         }
 
     except Exception as e:
         print("❌ Status check error:", e)
-        raise HTTPException(status_code=500, detail="Status check failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==============================
 # SERVE REACT BUILD
