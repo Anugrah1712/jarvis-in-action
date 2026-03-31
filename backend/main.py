@@ -59,6 +59,8 @@ GENIE_SPACES = {
     "ucf":"01f1212b517f1522911ad865de8b3868",
     "demat":"01f11bb3dfe31a56b87baa63fe46fc6f",
     "mf":"01f12120d7c61acda7d80b923e11dd42",
+    "gl":"01f121e2307c1b348f37d69de7efaf45",
+    "hi":"01f1238323d01476bb67ee0225b93bab",
 }
 
 BUSINESS_NAMES = {
@@ -72,7 +74,9 @@ BUSINESS_NAMES = {
     "ncf":"NCF LOAN",
     "ucf":"UCF LOAN",
     "demat":"DEMAT",
-    "mf":"MUTUAL FUND"
+    "mf":"MUTUAL FUND",
+    "gl":"GOLD LOAN",
+    "hi":"HEALTH INSURANCE",
 }
 
 BUSINESS_SCOPES = {
@@ -85,8 +89,10 @@ BUSINESS_SCOPES = {
     "tractor":"For Tractor,Jarvis is currently integrated with comprehensive view of the digital acquisition, engagement, and loan disbursal journey for tractor and related products, enabling marketing, funnel, app usage, customer profiling, and disbursement performance analysis.",
     "ncf":"For NCF,Jarvis is currently integrated with comprehensive tracking and analysis of the New Car Finance (NCF) customer journey—from marketing and lead generation to disbursal and user behavior—across both digital and offline channels.",
     "ucf":"For UCF,Jarvis is currently integrated with comprehensive data environment to analyze the Used Car Finance (UCF) business funnel, enabling tracking from digital offer base through lead generation, app engagement, loan disbursal (digital/offline), and customer demographics",
-    "demat":"for DEMAT,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data, cleanroom environments, and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
-    "mf":"for MF,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
+    "demat":"For DEMAT,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data, cleanroom environments, and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
+    "mf":"For MF,Jarvis is currently integrated with data intelligence solution designed to help you leverage insights from clickstream data, App data and demographic datasets. I enable you to transform complex data into actionable intelligence for informed decision-making and enhanced business outcomes.",
+    "gl":"For Gold Loan,Jarvis is currently integrated with Gold Loan digital 360 APP clickstream, Decile, Bureau, GL DRR, GL Serviceable Pincodes, GL Offerpool and Net APP Base",
+    "hi":"For Health Insurance,Jarvis is currently integrated with D360 clickstream, offer base, current customer split, app/web consent mart tables, MAU metrics, web URL-wise organic traffic, DP disbursals, and overall disbursals data. ",
 }
 
 # ==============================
