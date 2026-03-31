@@ -186,30 +186,6 @@ useEffect(() => {
   setSelectedBusiness(session.business);
 };
 
-const pollForResponse = async (conversationId, messageId, business) => {
-  const startTime = Date.now();
-
-  while (true) {
-    if (Date.now() - startTime > 180000) {
-      throw new Error("Timeout");
-    }
-
-    const res = await axios.get(`/status/${conversationId}`, {
-      params: { business, message_id: messageId }, // ✅ ADD THIS
-    });
-
-    if (res.data.status === "done") {
-      return res.data.response;
-    }
-
-    if (res.data.status === "failed") {
-      throw new Error("Query failed");
-    }
-
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-};
-
   const sendMessage = async (customText = null) => {
   if (loading) return;
 
@@ -230,16 +206,19 @@ const pollForResponse = async (conversationId, messageId, business) => {
   try {
     let response;
     let activeConversationId = conversationId;
-    let activeMessageId = null;
 
     if (!conversationId) {
-      response = await axios.post(`/start`, {
-        prompt: textToSend,
-        business: selectedBusiness,
-      });
+      response = await axios.post(
+        `/start`,
+        {
+          prompt: textToSend,
+          business: selectedBusiness,
+        },
+        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
+      );
 
       activeConversationId = response.data.conversation_id;
-      activeMessageId = response.data.message_id;
+      setConversationId(activeConversationId);
 
       setSessions((prev) => [
         {
@@ -252,20 +231,18 @@ const pollForResponse = async (conversationId, messageId, business) => {
         ...prev,
       ]);
     } else {
-      response = await axios.post(`/followup`, {
-        conversation_id: conversationId,
-        prompt: textToSend,
-        business: selectedBusiness,
-      });
+      response = await axios.post(
+        `/followup`,
+        {
+          conversation_id: conversationId,
+          prompt: textToSend,
+          business: selectedBusiness,
+        },
+        { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
+      );
     }
 
-    // ✅ THIS IS CORRECT
-    const genieResponses = await pollForResponse(
-      activeConversationId,
-      activeMessageId,
-      selectedBusiness
-    );
-
+    const genieResponses = response.data.response;
     let formatted = [];
 
     genieResponses.forEach((res) => {
@@ -322,9 +299,7 @@ const pollForResponse = async (conversationId, messageId, business) => {
         type: "text",
         timestamp: new Date(),
         content:
-          error.message === "Timeout"
-          ? "⏳ Query is taking too long. Please try a smaller query."
-          : "⚠️ Something went wrong. Please try again.",
+          "⚠️ Genie encountered an issue while processing your query. Please try again.",
       },
     ]);
   } finally {
@@ -432,28 +407,18 @@ const downloadCSV = (data, filename = "jarvis_data.csv") => {
 
     navigator.clipboard.writeText(tableString);
   };
-const downloadFullData = async (query) => {
+  const downloadFullData = async (query) => {
   try {
-    console.log("📥 Download query:", query);
-
     const res = await axios.post("/api/download", {
       query: query,
     }, { timeout: 0 });
 
     const fullData = res.data.data;
 
-    console.log("📊 Rows received:", fullData?.length);
-
-    if (!fullData || fullData.length === 0) {
-      alert("⚠️ No data returned from backend");
-      return;
-    }
-
     downloadCSV(fullData, `jarvis_full_export_${Date.now()}.csv`);
 
   } catch (err) {
-    console.error("❌ Download failed", err);
-    alert("Download failed. Check console.");
+    console.error("Download failed", err);
   }
 };
 
