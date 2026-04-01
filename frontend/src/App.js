@@ -36,6 +36,8 @@ function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
+  const lastSentRef = useRef("");
+  const transcriptRef = useRef("");
   useEffect(() => {
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -64,26 +66,17 @@ recognition.onresult = (event) => {
     }
   }
 
-  // show live typing
-  setPrompt(finalTranscript + interimTranscript);
+  const combined = finalTranscript + interimTranscript;
 
-  // store only final
-  if (finalTranscript) {
-    recognitionRef.current.finalTranscript = finalTranscript;
-  }
+  // update UI
+  setPrompt(combined);
+
+  // ✅ store latest ALWAYS (not only final)
+  transcriptRef.current = combined;
 };
 
 recognition.onend = () => {
   setListening(false);
-
-  const finalText = recognitionRef.current.finalTranscript;
-
-  if (finalText && finalText.trim()) {
-    sendMessage(finalText);
-  }
-
-  recognitionRef.current.finalTranscript = "";
-  setPrompt("");
 };
 
   recognitionRef.current = recognition;
@@ -112,6 +105,7 @@ recognition.onend = () => {
 const startListening = () => {
   if (recognitionRef.current && !listening) {
     try {
+      recognitionRef.current.finalTranscript = ""; // ✅ ADD THIS
       recognitionRef.current.start();
       setListening(true);
     } catch (e) {
@@ -123,8 +117,21 @@ const startListening = () => {
 const stopListening = () => {
   if (recognitionRef.current) {
     recognitionRef.current.stop();
-    setListening(false);
   }
+
+  setListening(false);
+
+  // ✅ ALWAYS use ref (guaranteed latest)
+  const text = transcriptRef.current.trim();
+
+  if (text && text !== lastSentRef.current) {
+    lastSentRef.current = text;
+    sendMessage(text);
+  }
+
+  // cleanup
+  transcriptRef.current = "";
+  setPrompt("");
 };
 
   const scrollToBottom = () => {
@@ -212,11 +219,18 @@ useEffect(() => {
   setSelectedBusiness(session.business);
 };
 
-  const sendMessage = async (customText = null) => {
+const sendMessage = async (customText = null, businessOverride = null) => {
   if (loading) return;
 
   const textToSend = customText ?? prompt;
   if (!textToSend.trim()) return;
+
+  const activeBusiness = businessOverride ?? selectedBusiness;
+
+  if (!activeBusiness) {
+    console.error("❌ No business selected");
+    return;
+  }
 
   const userMessage = {
     role: "user",
@@ -234,11 +248,10 @@ useEffect(() => {
     let activeConversationId = conversationId;
 
     if (!conversationId) {
-      response = await axios.post(
-        `/start`,
+      response = await axios.post(`/start`,
         {
           prompt: textToSend,
-          business: selectedBusiness,
+          business: activeBusiness,
         },
         { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
       );
@@ -250,7 +263,7 @@ useEffect(() => {
         {
           id: activeConversationId,
           title: textToSend.slice(0, 40),
-          business: selectedBusiness,
+          business: activeBusiness,
           messages: [userMessage],
           createdAt: new Date(),
         },
@@ -262,7 +275,7 @@ useEffect(() => {
         {
           conversation_id: conversationId,
           prompt: textToSend,
-          business: selectedBusiness,
+          business: activeBusiness,
         },
         { timeout: 0 } // 🔥 REMOVE TIMEOUT LIMIT
       );
