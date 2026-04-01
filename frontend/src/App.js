@@ -50,19 +50,41 @@ function App() {
   recognition.interimResults = true;
   recognition.lang = "en-IN"; // you can change
 
-  recognition.onresult = (event) => {
-    let transcript = "";
+recognition.onresult = (event) => {
+  let finalTranscript = "";
+  let interimTranscript = "";
 
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const transcript = event.results[i][0].transcript;
+
+    if (event.results[i].isFinal) {
+      finalTranscript += transcript;
+    } else {
+      interimTranscript += transcript;
     }
+  }
 
-    setPrompt(transcript);
-  };
+  // show live typing
+  setPrompt(finalTranscript + interimTranscript);
 
-  recognition.onend = () => {
-    setListening(false);
-  };
+  // store only final
+  if (finalTranscript) {
+    recognitionRef.current.finalTranscript = finalTranscript;
+  }
+};
+
+recognition.onend = () => {
+  setListening(false);
+
+  const finalText = recognitionRef.current.finalTranscript;
+
+  if (finalText && finalText.trim()) {
+    sendMessage(finalText);
+  }
+
+  recognitionRef.current.finalTranscript = "";
+  setPrompt("");
+};
 
   recognitionRef.current = recognition;
 }, []);
@@ -88,9 +110,13 @@ function App() {
   chatRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 };
 const startListening = () => {
-  if (recognitionRef.current) {
-    setListening(true);
-    recognitionRef.current.start();
+  if (recognitionRef.current && !listening) {
+    try {
+      recognitionRef.current.start();
+      setListening(true);
+    } catch (e) {
+      console.warn("Mic start error:", e);
+    }
   }
 };
 
