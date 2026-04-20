@@ -62,6 +62,7 @@ GENIE_SPACES = {
     "gl":"01f121e2307c1b348f37d69de7efaf45",
     "hi":"01f1238323d01476bb67ee0225b93bab",
     "seo":"01f1274b63951cffb26bb97d1a127a3e",
+    "li":"01f1317a08311f7cab9a2a72df316edd,"
 }
 
 BUSINESS_NAMES = {
@@ -79,6 +80,7 @@ BUSINESS_NAMES = {
     "gl":"GOLD LOAN",
     "hi":"HEALTH INSURANCE",
     "seo":"SEARCH ENGINE OPTIMIZATION",
+    "li":"LIFE INSURANCE",
 }
 
 BUSINESS_SCOPES = {
@@ -96,6 +98,7 @@ BUSINESS_SCOPES = {
     "gl":"For Gold Loan,Chatbot is currently integrated with Gold Loan digital 360 APP clickstream, Decile, Bureau, GL DRR, GL Serviceable Pincodes, GL Offerpool and Net APP Base",
     "hi":"For Health Insurance,Chatbot is currently integrated with D360 clickstream, offer base, current customer split, app/web consent mart tables, MAU metrics, web URL-wise organic traffic, DP disbursals, and overall disbursals data. ",
     "seo":"For Search Engine Optimization(SEO),Chatbot is currently integrated with web clickstream data, Sitemap based Live URLs data along with tag1 to tag6 mapping and URL wise clicks and impressions data from Google Search console(GSC).",
+    "li":"For Life Insurance,Chatbot is currently integrated with D360 clickstream, , current customer split, app/web consent mart tables and DP disbursals."
 }
 
 # ==============================
