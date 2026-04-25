@@ -1,10 +1,11 @@
 import os
 import time
+import requests
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.sql import StatementState
+from databricks.sdk.service.sql import StatementState, Disposition, Format
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -33,8 +34,6 @@ DATABRICKS_TOKEN = ""
 
 WAREHOUSE_ID = "66d48345dafda69f"
 
-# Passed as API parameters (not SQL) so multi-statement syntax error is avoided.
-# These set the default resolution context for unqualified table names.
 DEFAULT_CATALOG = "bfl_lake"
 DEFAULT_SCHEMA  = "bfl_experia"
 
@@ -110,7 +109,7 @@ BUSINESS_SCOPES = {
     "hi":"For Health Insurance,Chatbot is currently integrated with D360 clickstream, offer base, current customer split, app/web consent mart tables, MAU metrics, web URL-wise organic traffic, DP disbursals, and overall disbursals data. ",
     "seo":"For Search Engine Optimization(SEO),Chatbot is currently integrated with web clickstream data, Sitemap based Live URLs data along with tag1 to tag6 mapping and URL wise clicks and impressions data from Google Search console(GSC).",
     "li":"For Life Insurance,Chatbot is currently integrated with D360 clickstream, , current customer split, app/web consent mart tables and DP disbursals.",
-    "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, current offer base, GST base , current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master",
+    "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, Current offer base, GST Base, Customer split, Bureau details, BL SFDC Leads, MAU, DRR lead and Disbursal master, Gross app downloads, BL Digital Leads.",
 }
 
 # ==============================
@@ -127,15 +126,10 @@ class FollowUpRequest(BaseModel):
     business: str
 
 # ==============================
-# UTILITIES
+# UTILITIES — INLINE (used by chat)
 # ==============================
 
 def wait_for_statement(w, statement_id, max_wait_seconds=300):
-    """
-    Poll until statement reaches a terminal state.
-    Returns the final statement metadata.
-    Raises HTTPException with the actual Databricks error message on failure.
-    """
     terminal_states = {
         StatementState.SUCCEEDED,
         StatementState.FAILED,
@@ -157,10 +151,7 @@ def wait_for_statement(w, statement_id, max_wait_seconds=300):
             if meta and meta.status and meta.status.error:
                 error_msg = getattr(meta.status.error, "message", str(meta.status.error))
             print(f"  ❌ Statement failed. Databricks error: {error_msg}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Query failed [{state}]: {error_msg}"
-            )
+            raise HTTPException(status_code=500, detail=f"Query failed [{state}]: {error_msg}")
 
         time.sleep(2)
 
@@ -168,10 +159,7 @@ def wait_for_statement(w, statement_id, max_wait_seconds=300):
 
 
 def extract_columns_and_rows(w, meta, statement_id):
-    """
-    Given a SUCCEEDED statement meta, extract column names and paginate
-    through ALL result chunks. Returns (columns, all_rows).
-    """
+    """INLINE disposition — used by chat endpoints (small results)."""
     if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
         raise HTTPException(status_code=500, detail="Statement succeeded but schema is missing")
 
@@ -183,24 +171,20 @@ def extract_columns_and_rows(w, meta, statement_id):
 
     while True:
         chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
-
         if not chunk or not chunk.data_array:
-            print(f"  ℹ️ Chunk {chunk_index} is empty — stopping pagination")
+            print(f"  ℹ️ Chunk {chunk_index} empty — stopping")
             break
-
         all_rows.extend(chunk.data_array)
-        print(f"  📦 Chunk {chunk_index}: {len(chunk.data_array)} rows (total so far: {len(all_rows)})")
-
+        print(f"  📦 Chunk {chunk_index}: {len(chunk.data_array)} rows (total: {len(all_rows)})")
         if chunk.next_chunk_index is None:
             break
-
         chunk_index = chunk.next_chunk_index
 
     return columns, all_rows
 
 
 def get_query_result(w, statement_id):
-    """Used by chat endpoints (/start, /followup)."""
+    """Used by /start and /followup (INLINE, Genie-capped results)."""
     try:
         meta = wait_for_statement(w, statement_id)
         columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
@@ -213,15 +197,69 @@ def get_query_result(w, statement_id):
 
 
 # ==============================
+# UTILITIES — EXTERNAL_LINKS (used by download)
+# ==============================
+
+def fetch_all_rows_external_links(w, statement_id):
+    """
+    For EXTERNAL_LINKS disposition results are returned as pre-signed URLs.
+    Each chunk URL is fetched directly with requests and parsed as CSV.
+    Returns (columns, all_rows).
+    """
+    # Wait for completion first
+    meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
+
+    if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
+        raise HTTPException(status_code=500, detail="Schema missing in external links result")
+
+    columns = [col.name for col in meta.manifest.schema.columns]
+    print(f"  ✅ Columns resolved: {columns[:5]}{'...' if len(columns) > 5 else ''}")
+
+    all_rows = []
+    chunk_index = 0
+
+    while True:
+        chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
+
+        if not chunk:
+            print(f"  ℹ️ No chunk at index {chunk_index} — stopping")
+            break
+
+        # With EXTERNAL_LINKS each chunk has a .external_links list of signed URLs
+        ext_links = getattr(chunk, "external_links", None)
+        if not ext_links:
+            print(f"  ℹ️ Chunk {chunk_index} has no external_links — stopping")
+            break
+
+        for link_obj in ext_links:
+            url = link_obj.external_link
+            print(f"  🌐 Fetching external link chunk {chunk_index}: {url[:80]}...")
+            resp = requests.get(url, timeout=120)
+            resp.raise_for_status()
+
+            # Result format is CSV (we requested Format.CSV below)
+            import io
+            chunk_df = pd.read_csv(io.StringIO(resp.text), header=None, names=columns)
+            all_rows.extend(chunk_df.values.tolist())
+            print(f"  📦 Chunk {chunk_index}: {len(chunk_df)} rows (total: {len(all_rows)})")
+
+        if chunk.next_chunk_index is None:
+            break
+        chunk_index = chunk.next_chunk_index
+
+    return columns, all_rows
+
+
+# ==============================
 # DOWNLOAD ENDPOINT
 # ==============================
 
 @app.post("/api/download")
 def download_full_data(req: dict):
     """
-    Re-executes the SQL query and returns ALL rows (no 5000-row Genie cap).
-    Catalog and schema are passed as API-level parameters — NOT prepended
-    as SQL statements — because execute_statement only accepts a single statement.
+    Re-executes query with EXTERNAL_LINKS disposition to bypass the 25MB
+    INLINE limit. Chunks are fetched as pre-signed CSV URLs and assembled
+    into a full dataset with no row cap.
     """
     w = get_client()
     query = req.get("query")
@@ -229,7 +267,7 @@ def download_full_data(req: dict):
     if not query:
         raise HTTPException(status_code=400, detail="No query provided")
 
-    # Strip any trailing semicolons — execute_statement requires a single statement
+    # Strip trailing semicolons — execute_statement is single-statement only
     clean_query = query.strip().rstrip(";").strip()
 
     print(f"📥 /api/download — executing query:\n{clean_query[:300]}...")
@@ -238,19 +276,17 @@ def download_full_data(req: dict):
         statement = w.statement_execution.execute_statement(
             statement=clean_query,
             warehouse_id=WAREHOUSE_ID,
-            wait_timeout="0s",      # return immediately; poll manually below
-            catalog=DEFAULT_CATALOG,  # ✅ sets context without SQL syntax
-            schema=DEFAULT_SCHEMA,    # ✅ sets context without SQL syntax
+            wait_timeout="0s",
+            catalog=DEFAULT_CATALOG,
+            schema=DEFAULT_SCHEMA,
+            disposition=Disposition.EXTERNAL_LINKS,  # ✅ bypass 25MB inline limit
+            format=Format.CSV,                        # ✅ chunks come back as CSV URLs
         )
 
         statement_id = statement.statement_id
         print(f"  🆔 Statement ID: {statement_id}")
 
-        # Poll up to 5 minutes
-        meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
-
-        # Paginate ALL chunks — no row cap
-        columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
+        columns, all_rows = fetch_all_rows_external_links(w, statement_id)
 
         df = pd.DataFrame(all_rows, columns=columns)
         print(f"✅ Download complete: {len(df)} rows, {len(columns)} columns")
