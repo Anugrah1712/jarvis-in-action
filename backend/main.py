@@ -1,8 +1,10 @@
 import os
+import time
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.sql import StatementState
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -121,121 +123,144 @@ class FollowUpRequest(BaseModel):
 # UTILITIES
 # ==============================
 
-def get_query_result(w, statement_id):
-    try:
-        all_rows = []
-        next_chunk_index = 0
-        columns = None
+def wait_for_statement(w, statement_id, max_wait_seconds=300):
+    """
+    Poll until the statement reaches a terminal state.
+    Returns the final statement metadata object.
+    Raises HTTPException if it fails/cancels or times out.
+    """
+    terminal_states = {StatementState.SUCCEEDED, StatementState.FAILED, StatementState.CANCELED, StatementState.CLOSED}
+    deadline = time.time() + max_wait_seconds
 
-        while True:
-            result = w.statement_execution.get_statement_result_chunk_n(
-                statement_id,
-                next_chunk_index
-            )
-
-            if not result or not result.data_array:
-                break
-
-            all_rows.extend(result.data_array)
-
-            if result.next_chunk_index is None:
-                break
-
-            next_chunk_index = result.next_chunk_index
-
-        # ✅ Get schema from the statement itself, with null checks
+    while time.time() < deadline:
         meta = w.statement_execution.get_statement(statement_id)
+        state = meta.status.state if meta and meta.status else None
+        print(f"  ⏳ Statement {statement_id} state: {state}")
 
-        if meta is None:
-            print("❌ get_statement returned None")
-            return []
+        if state == StatementState.SUCCEEDED:
+            return meta
+        if state in terminal_states:
+            raise HTTPException(status_code=500, detail=f"Query ended with state: {state}")
 
-        if meta.manifest is None or meta.manifest.schema is None:
-            print("❌ manifest or schema is None, status:", getattr(meta, 'status', 'unknown'))
-            return []
+        time.sleep(2)
 
-        columns = [col.name for col in meta.manifest.schema.columns]
+    raise HTTPException(status_code=504, detail="Query timed out waiting for results")
+
+
+def extract_columns_and_rows(w, meta, statement_id):
+    """
+    Given a SUCCEEDED statement meta, extract column names and paginate
+    through ALL result chunks. Returns (columns, all_rows).
+    """
+    # --- Schema ---
+    if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
+        raise HTTPException(status_code=500, detail="Statement succeeded but schema is missing")
+
+    columns = [col.name for col in meta.manifest.schema.columns]
+    print(f"  ✅ Columns resolved: {columns[:5]}{'...' if len(columns) > 5 else ''}")
+
+    # --- Rows (paginated) ---
+    all_rows = []
+    chunk_index = 0
+
+    while True:
+        chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
+
+        if not chunk or not chunk.data_array:
+            print(f"  ℹ️ Chunk {chunk_index} is empty — stopping pagination")
+            break
+
+        all_rows.extend(chunk.data_array)
+        print(f"  📦 Chunk {chunk_index}: {len(chunk.data_array)} rows (total so far: {len(all_rows)})")
+
+        if chunk.next_chunk_index is None:
+            break
+
+        chunk_index = chunk.next_chunk_index
+
+    return columns, all_rows
+
+
+def get_query_result(w, statement_id):
+    """
+    Used by chat endpoints (/start, /followup).
+    Waits for statement to complete then returns records.
+    """
+    try:
+        meta = wait_for_statement(w, statement_id)
+        columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
         return pd.DataFrame(all_rows, columns=columns).to_dict(orient="records")
-
+    except HTTPException:
+        raise
     except Exception as e:
-        print("❌ Query result pagination error:", e)
+        print("❌ Query result error:", e)
         return []
+
+
+# ==============================
+# DOWNLOAD ENDPOINT
+# ==============================
 
 @app.post("/api/download")
 def download_full_data(req: dict):
+    """
+    Re-executes the SQL query without any row limit and streams ALL rows back.
+    The frontend triggers a CSV download from the result.
+    """
     w = get_client()
     query = req.get("query")
 
     if not query:
         raise HTTPException(status_code=400, detail="No query provided")
 
-    try:
-        import time
-        from databricks.sdk.service.sql import StatementState
+    print(f"📥 /api/download — executing query:\n{query[:200]}...")
 
+    try:
+        # Execute with no row limit — Databricks paginates automatically
         statement = w.statement_execution.execute_statement(
             statement=query,
             warehouse_id="66d48345dafda69f",
-            wait_timeout="50s"
+            wait_timeout="0s",   # ← return immediately with statement_id, don't block
+            # No LIMIT injected — we want ALL rows
         )
 
         statement_id = statement.statement_id
+        print(f"  🆔 Statement ID: {statement_id}")
 
-        # ✅ Poll until the statement is truly SUCCEEDED
-        for _ in range(30):  # max ~60s polling
-            meta = w.statement_execution.get_statement(statement_id)
-            state = meta.status.state if meta and meta.status else None
+        # Poll until done (up to 5 minutes)
+        meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
 
-            if state == StatementState.SUCCEEDED:
-                break
-            elif state in (StatementState.FAILED, StatementState.CANCELED, StatementState.CLOSED):
-                raise HTTPException(status_code=500, detail=f"Query failed with state: {state}")
+        # Extract all rows across all chunks
+        columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
 
-            time.sleep(2)
+        df = pd.DataFrame(all_rows, columns=columns)
+        print(f"✅ Download complete: {len(df)} rows, {len(columns)} columns")
 
-        # ✅ Now get schema and rows
-        if not meta.manifest or not meta.manifest.schema:
-            raise HTTPException(status_code=500, detail="No schema in result")
-
-        columns = [col.name for col in meta.manifest.schema.columns]
-
-        all_rows = []
-        chunk_index = 0
-        while True:
-            chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
-            if not chunk or not chunk.data_array:
-                break
-            all_rows.extend(chunk.data_array)
-            if chunk.next_chunk_index is None:
-                break
-            chunk_index = chunk.next_chunk_index
-
-        data = pd.DataFrame(all_rows, columns=columns).to_dict(orient="records")
-        return {"data": data}
+        return {"data": df.to_dict(orient="records"), "total_rows": len(df)}
 
     except HTTPException:
         raise
     except Exception as e:
         print("❌ Download error:", e)
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
+# ==============================
+# PROCESS GENIE RESPONSE
+# ==============================
+
 def process_genie_response(w, response):
     output = []
-
     attachments = getattr(response, "attachments", []) or []
 
     for item in attachments:
-        # TEXT RESPONSE
         if getattr(item, "text", None):
             output.append({
                 "type": "text",
                 "content": item.text.content
             })
-
-        # QUERY RESPONSE
         elif getattr(item, "query", None):
             statement_id = getattr(response.query_result, "statement_id", None)
-
             data = []
             if statement_id:
                 data = get_query_result(w, statement_id)
@@ -249,16 +274,13 @@ def process_genie_response(w, response):
 
     return output
 
+
 def get_space_id(business: str):
     space_id = GENIE_SPACES.get(business)
-
     if not space_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid business: {business}"
-        )
-
+        raise HTTPException(status_code=400, detail=f"Invalid business: {business}")
     return space_id
+
 
 # ==============================
 # HEALTH CHECK
@@ -267,6 +289,7 @@ def get_space_id(business: str):
 @app.get("/api/health")
 def health():
     return {"message": "Chatbot Backend Running"}
+
 
 # ==============================
 # AVAILABLE BUSINESSES
@@ -283,6 +306,7 @@ def get_businesses():
         for key in GENIE_SPACES.keys()
     ]
 
+
 # ==============================
 # START CONVERSATION
 # ==============================
@@ -293,19 +317,15 @@ def start_conversation(req: PromptRequest):
     space_id = get_space_id(req.business)
 
     try:
-        conversation = w.genie.start_conversation_and_wait(
-            space_id,
-            req.prompt
-        )
-
+        conversation = w.genie.start_conversation_and_wait(space_id, req.prompt)
         return {
             "conversation_id": conversation.conversation_id,
             "response": process_genie_response(w, conversation)
         }
-
     except Exception as e:
         print("❌ Start conversation error:", e)
         raise HTTPException(status_code=500, detail="Failed to start conversation")
+
 
 # ==============================
 # FOLLOW UP MESSAGE
@@ -322,15 +342,14 @@ def follow_up(req: FollowUpRequest):
             req.conversation_id,
             req.prompt
         )
-
         return {
             "conversation_id": follow_up_msg.conversation_id,
             "response": process_genie_response(w, follow_up_msg)
         }
-
     except Exception as e:
         print("❌ Follow-up error:", e)
         raise HTTPException(status_code=500, detail="Failed to process follow-up")
+
 
 # ==============================
 # SERVE REACT BUILD
@@ -342,6 +361,7 @@ app.mount("/static", StaticFiles(directory="frontend/build/static"), name="stati
 async def serve_spa(full_path: str):
     index_path = os.path.join("frontend/build", "index.html")
     return FileResponse(index_path)
+
 
 # ==============================
 # RUN SERVER
