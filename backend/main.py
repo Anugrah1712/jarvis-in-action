@@ -125,6 +125,7 @@ def get_query_result(w, statement_id):
     try:
         all_rows = []
         next_chunk_index = 0
+        columns = None
 
         while True:
             result = w.statement_execution.get_statement_result_chunk_n(
@@ -137,17 +138,23 @@ def get_query_result(w, statement_id):
 
             all_rows.extend(result.data_array)
 
-            # Move to next chunk
             if result.next_chunk_index is None:
                 break
 
             next_chunk_index = result.next_chunk_index
 
-        # Get schema separately
+        # ✅ Get schema from the statement itself, with null checks
         meta = w.statement_execution.get_statement(statement_id)
 
-        columns = [col.name for col in meta.manifest.schema.columns]
+        if meta is None:
+            print("❌ get_statement returned None")
+            return []
 
+        if meta.manifest is None or meta.manifest.schema is None:
+            print("❌ manifest or schema is None, status:", getattr(meta, 'status', 'unknown'))
+            return []
+
+        columns = [col.name for col in meta.manifest.schema.columns]
         return pd.DataFrame(all_rows, columns=columns).to_dict(orient="records")
 
     except Exception as e:
@@ -157,10 +164,15 @@ def get_query_result(w, statement_id):
 @app.post("/api/download")
 def download_full_data(req: dict):
     w = get_client()
-
     query = req.get("query")
 
+    if not query:
+        raise HTTPException(status_code=400, detail="No query provided")
+
     try:
+        import time
+        from databricks.sdk.service.sql import StatementState
+
         statement = w.statement_execution.execute_statement(
             statement=query,
             warehouse_id="66d48345dafda69f",
@@ -169,13 +181,43 @@ def download_full_data(req: dict):
 
         statement_id = statement.statement_id
 
-        data = get_query_result(w, statement_id)
+        # ✅ Poll until the statement is truly SUCCEEDED
+        for _ in range(30):  # max ~60s polling
+            meta = w.statement_execution.get_statement(statement_id)
+            state = meta.status.state if meta and meta.status else None
 
+            if state == StatementState.SUCCEEDED:
+                break
+            elif state in (StatementState.FAILED, StatementState.CANCELED, StatementState.CLOSED):
+                raise HTTPException(status_code=500, detail=f"Query failed with state: {state}")
+
+            time.sleep(2)
+
+        # ✅ Now get schema and rows
+        if not meta.manifest or not meta.manifest.schema:
+            raise HTTPException(status_code=500, detail="No schema in result")
+
+        columns = [col.name for col in meta.manifest.schema.columns]
+
+        all_rows = []
+        chunk_index = 0
+        while True:
+            chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
+            if not chunk or not chunk.data_array:
+                break
+            all_rows.extend(chunk.data_array)
+            if chunk.next_chunk_index is None:
+                break
+            chunk_index = chunk.next_chunk_index
+
+        data = pd.DataFrame(all_rows, columns=columns).to_dict(orient="records")
         return {"data": data}
 
+    except HTTPException:
+        raise
     except Exception as e:
         print("❌ Download error:", e)
-        raise HTTPException(status_code=500, detail="Download failed")
+        raise HTTPException(status_code=500, detail=str(e))
     
 def process_genie_response(w, response):
     output = []
