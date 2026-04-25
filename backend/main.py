@@ -1,4 +1,5 @@
 import os
+import io
 import time
 import requests
 import pandas as pd
@@ -109,7 +110,7 @@ BUSINESS_SCOPES = {
     "hi":"For Health Insurance,Chatbot is currently integrated with D360 clickstream, offer base, current customer split, app/web consent mart tables, MAU metrics, web URL-wise organic traffic, DP disbursals, and overall disbursals data. ",
     "seo":"For Search Engine Optimization(SEO),Chatbot is currently integrated with web clickstream data, Sitemap based Live URLs data along with tag1 to tag6 mapping and URL wise clicks and impressions data from Google Search console(GSC).",
     "li":"For Life Insurance,Chatbot is currently integrated with D360 clickstream, , current customer split, app/web consent mart tables and DP disbursals.",
-    "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, Current offer base, GST Base, Customer split, Bureau details, BL SFDC Leads, MAU, DRR lead and Disbursal master, Gross app downloads, BL Digital Leads.",
+    "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, current offer base, GST base , current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master",
 }
 
 # ==============================
@@ -200,54 +201,67 @@ def get_query_result(w, statement_id):
 # UTILITIES — EXTERNAL_LINKS (used by download)
 # ==============================
 
-def fetch_all_rows_external_links(w, statement_id):
+def fetch_all_rows_external_links(w, statement_id, columns):
     """
-    For EXTERNAL_LINKS disposition results are returned as pre-signed URLs.
-    Each chunk URL is fetched directly with requests and parsed as CSV.
-    Returns (columns, all_rows).
+    Paginates through ALL external link chunks using next_chunk_index
+    from the link objects themselves (not from the chunk wrapper).
+
+    With EXTERNAL_LINKS + CSV:
+      - Each API call returns a list of link objects
+      - Each link object has: .external_link (URL), .next_chunk_index (int or None)
+      - next_chunk_index on the LINK OBJECT is the source of truth for pagination
     """
-    # Wait for completion first
-    meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
-
-    if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
-        raise HTTPException(status_code=500, detail="Schema missing in external links result")
-
-    columns = [col.name for col in meta.manifest.schema.columns]
-    print(f"  ✅ Columns resolved: {columns[:5]}{'...' if len(columns) > 5 else ''}")
-
-    all_rows = []
+    all_dfs = []
     chunk_index = 0
+    total_rows = 0
 
     while True:
+        print(f"  🔄 Fetching chunk index {chunk_index} from Databricks...")
         chunk = w.statement_execution.get_statement_result_chunk_n(statement_id, chunk_index)
 
         if not chunk:
-            print(f"  ℹ️ No chunk at index {chunk_index} — stopping")
+            print(f"  ℹ️ No chunk returned at index {chunk_index} — done")
             break
 
-        # With EXTERNAL_LINKS each chunk has a .external_links list of signed URLs
         ext_links = getattr(chunk, "external_links", None)
         if not ext_links:
-            print(f"  ℹ️ Chunk {chunk_index} has no external_links — stopping")
+            print(f"  ℹ️ Chunk {chunk_index} has no external_links — done")
             break
+
+        next_chunk_index = None  # will be set from link objects
 
         for link_obj in ext_links:
             url = link_obj.external_link
-            print(f"  🌐 Fetching external link chunk {chunk_index}: {url[:80]}...")
-            resp = requests.get(url, timeout=120)
+            print(f"  🌐 Downloading chunk {chunk_index}: {url[:80]}...")
+
+            resp = requests.get(url, timeout=300)
             resp.raise_for_status()
 
-            # Result format is CSV (we requested Format.CSV below)
-            import io
-            chunk_df = pd.read_csv(io.StringIO(resp.text), header=None, names=columns)
-            all_rows.extend(chunk_df.values.tolist())
-            print(f"  📦 Chunk {chunk_index}: {len(chunk_df)} rows (total: {len(all_rows)})")
+            chunk_df = pd.read_csv(
+                io.StringIO(resp.text),
+                header=None,
+                names=columns,
+                low_memory=False,   # ✅ suppresses DtypeWarning
+            )
+            all_dfs.append(chunk_df)
+            total_rows += len(chunk_df)
+            print(f"  📦 Chunk {chunk_index}: {len(chunk_df)} rows (running total: {total_rows})")
 
-        if chunk.next_chunk_index is None:
+            # ✅ The next chunk index lives on the LINK OBJECT, not the chunk wrapper
+            next_chunk_index = getattr(link_obj, "next_chunk_index", None)
+
+        if next_chunk_index is None:
+            print(f"  ✅ No more chunks after index {chunk_index} — pagination complete")
             break
-        chunk_index = chunk.next_chunk_index
 
-    return columns, all_rows
+        chunk_index = next_chunk_index
+
+    if not all_dfs:
+        return []
+
+    full_df = pd.concat(all_dfs, ignore_index=True)
+    print(f"  ✅ All chunks assembled: {len(full_df)} total rows")
+    return full_df.values.tolist()
 
 
 # ==============================
@@ -258,8 +272,7 @@ def fetch_all_rows_external_links(w, statement_id):
 def download_full_data(req: dict):
     """
     Re-executes query with EXTERNAL_LINKS disposition to bypass the 25MB
-    INLINE limit. Chunks are fetched as pre-signed CSV URLs and assembled
-    into a full dataset with no row cap.
+    INLINE limit. All chunks are fetched and assembled with correct pagination.
     """
     w = get_client()
     query = req.get("query")
@@ -267,9 +280,7 @@ def download_full_data(req: dict):
     if not query:
         raise HTTPException(status_code=400, detail="No query provided")
 
-    # Strip trailing semicolons — execute_statement is single-statement only
     clean_query = query.strip().rstrip(";").strip()
-
     print(f"📥 /api/download — executing query:\n{clean_query[:300]}...")
 
     try:
@@ -279,14 +290,25 @@ def download_full_data(req: dict):
             wait_timeout="0s",
             catalog=DEFAULT_CATALOG,
             schema=DEFAULT_SCHEMA,
-            disposition=Disposition.EXTERNAL_LINKS,  # ✅ bypass 25MB inline limit
-            format=Format.CSV,                        # ✅ chunks come back as CSV URLs
+            disposition=Disposition.EXTERNAL_LINKS,
+            format=Format.CSV,
         )
 
         statement_id = statement.statement_id
         print(f"  🆔 Statement ID: {statement_id}")
 
-        columns, all_rows = fetch_all_rows_external_links(w, statement_id)
+        # Wait for query to complete and get schema
+        meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
+
+        if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
+            raise HTTPException(status_code=500, detail="Schema missing after query succeeded")
+
+        columns = [col.name for col in meta.manifest.schema.columns]
+        total_row_count = getattr(meta.manifest, "total_row_count", "unknown")
+        print(f"  ✅ Schema: {columns[:5]}... | Expected total rows: {total_row_count}")
+
+        # Fetch ALL chunks using external links pagination
+        all_rows = fetch_all_rows_external_links(w, statement_id, columns)
 
         df = pd.DataFrame(all_rows, columns=columns)
         print(f"✅ Download complete: {len(df)} rows, {len(columns)} columns")
