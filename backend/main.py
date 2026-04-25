@@ -25,11 +25,17 @@ app.add_middleware(
 )
 
 # ==============================
-# DATABRICKS CONFIG (SECURE)
+# DATABRICKS CONFIG
 # ==============================
 
 DATABRICKS_HOST = "https://adb-2887288469729514.14.azuredatabricks.net"
 DATABRICKS_TOKEN = ""
+
+WAREHOUSE_ID = "66d48345dafda69f"
+
+# Set the default catalog so standalone SQL queries resolve table names correctly
+DEFAULT_CATALOG = "bfl_lake"
+DEFAULT_SCHEMA  = "bfl_experia"
 
 if not DATABRICKS_HOST or not DATABRICKS_TOKEN:
     print("⚠️ Databricks credentials not set in environment variables")
@@ -125,11 +131,16 @@ class FollowUpRequest(BaseModel):
 
 def wait_for_statement(w, statement_id, max_wait_seconds=300):
     """
-    Poll until the statement reaches a terminal state.
-    Returns the final statement metadata object.
-    Raises HTTPException if it fails/cancels or times out.
+    Poll until statement reaches a terminal state.
+    Returns the final statement metadata.
+    Raises HTTPException with the actual Databricks error message on failure.
     """
-    terminal_states = {StatementState.SUCCEEDED, StatementState.FAILED, StatementState.CANCELED, StatementState.CLOSED}
+    terminal_states = {
+        StatementState.SUCCEEDED,
+        StatementState.FAILED,
+        StatementState.CANCELED,
+        StatementState.CLOSED
+    }
     deadline = time.time() + max_wait_seconds
 
     while time.time() < deadline:
@@ -139,8 +150,17 @@ def wait_for_statement(w, statement_id, max_wait_seconds=300):
 
         if state == StatementState.SUCCEEDED:
             return meta
+
         if state in terminal_states:
-            raise HTTPException(status_code=500, detail=f"Query ended with state: {state}")
+            # Extract the real Databricks error message
+            error_msg = "Unknown error"
+            if meta and meta.status and meta.status.error:
+                error_msg = getattr(meta.status.error, "message", str(meta.status.error))
+            print(f"  ❌ Statement failed. Databricks error: {error_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Query failed [{state}]: {error_msg}"
+            )
 
         time.sleep(2)
 
@@ -152,14 +172,12 @@ def extract_columns_and_rows(w, meta, statement_id):
     Given a SUCCEEDED statement meta, extract column names and paginate
     through ALL result chunks. Returns (columns, all_rows).
     """
-    # --- Schema ---
     if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
         raise HTTPException(status_code=500, detail="Statement succeeded but schema is missing")
 
     columns = [col.name for col in meta.manifest.schema.columns]
     print(f"  ✅ Columns resolved: {columns[:5]}{'...' if len(columns) > 5 else ''}")
 
-    # --- Rows (paginated) ---
     all_rows = []
     chunk_index = 0
 
@@ -182,10 +200,7 @@ def extract_columns_and_rows(w, meta, statement_id):
 
 
 def get_query_result(w, statement_id):
-    """
-    Used by chat endpoints (/start, /followup).
-    Waits for statement to complete then returns records.
-    """
+    """Used by chat endpoints (/start, /followup)."""
     try:
         meta = wait_for_statement(w, statement_id)
         columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
@@ -204,8 +219,9 @@ def get_query_result(w, statement_id):
 @app.post("/api/download")
 def download_full_data(req: dict):
     """
-    Re-executes the SQL query without any row limit and streams ALL rows back.
-    The frontend triggers a CSV download from the result.
+    Re-executes the SQL with catalog/schema context set explicitly so
+    table references resolve the same way Genie resolves them.
+    Returns ALL rows (paginated) — no 5000-row cap.
     """
     w = get_client()
     query = req.get("query")
@@ -213,24 +229,26 @@ def download_full_data(req: dict):
     if not query:
         raise HTTPException(status_code=400, detail="No query provided")
 
-    print(f"📥 /api/download — executing query:\n{query[:200]}...")
+    print(f"📥 /api/download — executing query:\n{query[:300]}...")
 
     try:
-        # Execute with no row limit — Databricks paginates automatically
+        # Prepend USE CATALOG / USE SCHEMA so unqualified table refs resolve correctly.
+        # Safe to include even when query already uses fully-qualified names.
+        full_query = f"USE CATALOG {DEFAULT_CATALOG};\nUSE SCHEMA {DEFAULT_SCHEMA};\n{query}"
+
         statement = w.statement_execution.execute_statement(
-            statement=query,
-            warehouse_id="66d48345dafda69f",
-            wait_timeout="0s",   # ← return immediately with statement_id, don't block
-            # No LIMIT injected — we want ALL rows
+            statement=full_query,
+            warehouse_id=WAREHOUSE_ID,
+            wait_timeout="0s",  # return immediately; we poll manually below
         )
 
         statement_id = statement.statement_id
         print(f"  🆔 Statement ID: {statement_id}")
 
-        # Poll until done (up to 5 minutes)
+        # Poll up to 5 minutes
         meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
 
-        # Extract all rows across all chunks
+        # Paginate ALL chunks
         columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
 
         df = pd.DataFrame(all_rows, columns=columns)
