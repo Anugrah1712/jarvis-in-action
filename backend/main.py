@@ -33,7 +33,8 @@ DATABRICKS_TOKEN = ""
 
 WAREHOUSE_ID = "66d48345dafda69f"
 
-# Set the default catalog so standalone SQL queries resolve table names correctly
+# Passed as API parameters (not SQL) so multi-statement syntax error is avoided.
+# These set the default resolution context for unqualified table names.
 DEFAULT_CATALOG = "bfl_lake"
 DEFAULT_SCHEMA  = "bfl_experia"
 
@@ -152,7 +153,6 @@ def wait_for_statement(w, statement_id, max_wait_seconds=300):
             return meta
 
         if state in terminal_states:
-            # Extract the real Databricks error message
             error_msg = "Unknown error"
             if meta and meta.status and meta.status.error:
                 error_msg = getattr(meta.status.error, "message", str(meta.status.error))
@@ -219,9 +219,9 @@ def get_query_result(w, statement_id):
 @app.post("/api/download")
 def download_full_data(req: dict):
     """
-    Re-executes the SQL with catalog/schema context set explicitly so
-    table references resolve the same way Genie resolves them.
-    Returns ALL rows (paginated) — no 5000-row cap.
+    Re-executes the SQL query and returns ALL rows (no 5000-row Genie cap).
+    Catalog and schema are passed as API-level parameters — NOT prepended
+    as SQL statements — because execute_statement only accepts a single statement.
     """
     w = get_client()
     query = req.get("query")
@@ -229,17 +229,18 @@ def download_full_data(req: dict):
     if not query:
         raise HTTPException(status_code=400, detail="No query provided")
 
-    print(f"📥 /api/download — executing query:\n{query[:300]}...")
+    # Strip any trailing semicolons — execute_statement requires a single statement
+    clean_query = query.strip().rstrip(";").strip()
+
+    print(f"📥 /api/download — executing query:\n{clean_query[:300]}...")
 
     try:
-        # Prepend USE CATALOG / USE SCHEMA so unqualified table refs resolve correctly.
-        # Safe to include even when query already uses fully-qualified names.
-        full_query = f"USE CATALOG {DEFAULT_CATALOG};\nUSE SCHEMA {DEFAULT_SCHEMA};\n{query}"
-
         statement = w.statement_execution.execute_statement(
-            statement=full_query,
+            statement=clean_query,
             warehouse_id=WAREHOUSE_ID,
-            wait_timeout="0s",  # return immediately; we poll manually below
+            wait_timeout="0s",      # return immediately; poll manually below
+            catalog=DEFAULT_CATALOG,  # ✅ sets context without SQL syntax
+            schema=DEFAULT_SCHEMA,    # ✅ sets context without SQL syntax
         )
 
         statement_id = statement.statement_id
@@ -248,7 +249,7 @@ def download_full_data(req: dict):
         # Poll up to 5 minutes
         meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
 
-        # Paginate ALL chunks
+        # Paginate ALL chunks — no row cap
         columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
 
         df = pd.DataFrame(all_rows, columns=columns)
