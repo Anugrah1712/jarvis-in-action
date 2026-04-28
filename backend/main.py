@@ -1,6 +1,7 @@
 import os
 import io
 import time
+import math
 import requests
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -126,6 +127,47 @@ class FollowUpRequest(BaseModel):
     prompt: str
     business: str
 
+
+# ==============================
+# ✅ FIX 1: Sanitize records — replace NaN/Inf with None so JSON serializes cleanly
+# ==============================
+
+def sanitize_records(records: list) -> list:
+    """
+    Replace float NaN, Infinity, -Infinity with None (JSON null).
+    Also converts any remaining non-serializable types to strings.
+    """
+    sanitized = []
+    for row in records:
+        clean_row = {}
+        for k, v in row.items():
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                clean_row[k] = None
+            else:
+                clean_row[k] = v
+        sanitized.append(clean_row)
+    return sanitized
+
+
+# ==============================
+# ✅ FIX 2: DataFrame → records preserving timestamps as strings
+# ==============================
+
+def df_to_records(df: pd.DataFrame) -> list:
+    """
+    Convert all columns to string dtype before calling to_dict so that
+    timestamps/dates are never coerced to Python datetime objects.
+    Then sanitize for NaN/Inf.
+    """
+    # Convert object/datetime columns to string, leave numerics as-is
+    df_out = df.copy()
+    for col in df_out.columns:
+        if df_out[col].dtype == "object" or str(df_out[col].dtype).startswith("datetime"):
+            df_out[col] = df_out[col].astype(str).replace("NaT", None).replace("nan", None)
+    records = df_out.to_dict(orient="records")
+    return sanitize_records(records)
+
+
 # ==============================
 # UTILITIES — INLINE (used by chat)
 # ==============================
@@ -189,7 +231,9 @@ def get_query_result(w, statement_id):
     try:
         meta = wait_for_statement(w, statement_id)
         columns, all_rows = extract_columns_and_rows(w, meta, statement_id)
-        return pd.DataFrame(all_rows, columns=columns).to_dict(orient="records")
+        # ✅ Use df_to_records to preserve timestamps and sanitize NaN
+        df = pd.DataFrame(all_rows, columns=columns)
+        return df_to_records(df)
     except HTTPException:
         raise
     except Exception as e:
@@ -203,13 +247,8 @@ def get_query_result(w, statement_id):
 
 def fetch_all_rows_external_links(w, statement_id, columns):
     """
-    Paginates through ALL external link chunks using next_chunk_index
-    from the link objects themselves (not from the chunk wrapper).
-
-    With EXTERNAL_LINKS + CSV:
-      - Each API call returns a list of link objects
-      - Each link object has: .external_link (URL), .next_chunk_index (int or None)
-      - next_chunk_index on the LINK OBJECT is the source of truth for pagination
+    Paginates through ALL external link chunks.
+    ✅ Reads CSV with dtype=str to preserve timestamps exactly as they appear in Databricks.
     """
     all_dfs = []
     chunk_index = 0
@@ -228,7 +267,7 @@ def fetch_all_rows_external_links(w, statement_id, columns):
             print(f"  ℹ️ Chunk {chunk_index} has no external_links — done")
             break
 
-        next_chunk_index = None  # will be set from link objects
+        next_chunk_index = None
 
         for link_obj in ext_links:
             url = link_obj.external_link
@@ -237,17 +276,18 @@ def fetch_all_rows_external_links(w, statement_id, columns):
             resp = requests.get(url, timeout=300)
             resp.raise_for_status()
 
+            # ✅ FIX: dtype=str prevents pandas from converting timestamps to datetime
             chunk_df = pd.read_csv(
                 io.StringIO(resp.text),
                 header=None,
                 names=columns,
-                low_memory=False,   # ✅ suppresses DtypeWarning
+                dtype=str,          # ✅ keep everything as raw string — no type coercion
+                keep_default_na=False,  # ✅ don't convert empty strings to NaN
             )
             all_dfs.append(chunk_df)
             total_rows += len(chunk_df)
             print(f"  📦 Chunk {chunk_index}: {len(chunk_df)} rows (running total: {total_rows})")
 
-            # ✅ The next chunk index lives on the LINK OBJECT, not the chunk wrapper
             next_chunk_index = getattr(link_obj, "next_chunk_index", None)
 
         if next_chunk_index is None:
@@ -297,7 +337,6 @@ def download_full_data(req: dict):
         statement_id = statement.statement_id
         print(f"  🆔 Statement ID: {statement_id}")
 
-        # Wait for query to complete and get schema
         meta = wait_for_statement(w, statement_id, max_wait_seconds=300)
 
         if not meta.manifest or not meta.manifest.schema or not meta.manifest.schema.columns:
@@ -307,13 +346,14 @@ def download_full_data(req: dict):
         total_row_count = getattr(meta.manifest, "total_row_count", "unknown")
         print(f"  ✅ Schema: {columns[:5]}... | Expected total rows: {total_row_count}")
 
-        # Fetch ALL chunks using external links pagination
         all_rows = fetch_all_rows_external_links(w, statement_id, columns)
 
+        # ✅ Build df with str dtype, then sanitize — no NaN/Inf in JSON output
         df = pd.DataFrame(all_rows, columns=columns)
-        print(f"✅ Download complete: {len(df)} rows, {len(columns)} columns")
+        records = df_to_records(df)
 
-        return {"data": df.to_dict(orient="records"), "total_rows": len(df)}
+        print(f"✅ Download complete: {len(records)} rows, {len(columns)} columns")
+        return {"data": records, "total_rows": len(records)}
 
     except HTTPException:
         raise
