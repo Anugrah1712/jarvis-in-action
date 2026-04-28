@@ -69,10 +69,17 @@ function Spinner() {
 function Toast({ toasts, removeToast }) {
   return (
     <div style={{
-      position: "fixed", bottom: 24, right: 24, zIndex: 9999,
-      display: "flex", flexDirection: "column", gap: 8,
-      pointerEvents: "none",
-    }}>
+  position: "fixed",
+  bottom: 40,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 9999,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 8,
+  pointerEvents: "none",
+}}>
       {toasts.map(t => (
         <div
           key={t.id}
@@ -280,17 +287,27 @@ export default function App() {
   const isNumeric = (v) => v !== null && v !== "" && !isNaN(v);
   const isDate    = (v) => typeof v === "string" && !isNaN(Date.parse(v));
 
-  const formatValue = (value, granularity = "daily", columnName = "") => {
-    if (columnName.toLowerCase().includes("month")) return value;
-    if (isNumeric(value)) return Number(value).toLocaleString();
-    if (isDate(value)) {
-      const d = new Date(value);
-      return granularity === "monthly"
-        ? d.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
-        : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+const isTimestamp = (v) =>
+  typeof v === "string" && /T\d{2}:\d{2}/.test(v); // has a time component
+
+const formatValue = (value, granularity = "daily", columnName = "") => {
+  if (columnName.toLowerCase().includes("month")) return value;
+  if (isNumeric(value)) return Number(value).toLocaleString();
+  if (isDate(value)) {
+    const d = new Date(value);
+    // If raw string carries a time part (e.g. "2024-01-15T10:30:00"), show it
+    if (isTimestamp(value)) {
+      return d.toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+      });
     }
-    return value;
-  };
+    return granularity === "monthly"
+      ? d.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+      : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  return value;
+};
 
   const detectDateGranularity = (data, key) => {
     if (!data || data.length < 2) return "daily";
@@ -599,17 +616,15 @@ export default function App() {
                 disabled={!!st.exportingPng}
                 onClick={() => handleExportPNG(`chart-${index}`, index)}
               >
-                {st.exportingPng
-                  ? <><Spinner />Exporting…</>
-                  : "Export PNG"
-                }
+                {st.exportingPng ? <><Spinner />Exporting…</> : "Export PNG"}
               </button>
 
-              <ResponsiveContainer width="100%" height={350}>
-                {chartType === "line" && (
+              {chartType === "line" && (
+                <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={msg.data}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey={categoryKey}
+                    <XAxis
+                      dataKey={categoryKey}
                       tickFormatter={v => {
                         if (!isDate(v)) return v;
                         const d = new Date(v);
@@ -627,11 +642,15 @@ export default function App() {
                         strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} animationDuration={800} />
                     ))}
                   </LineChart>
-                )}
-                {chartType === "bar" && (
+                </ResponsiveContainer>
+              )}
+
+              {chartType === "bar" && (
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={msg.data}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey={categoryKey}
+                    <XAxis
+                      dataKey={categoryKey}
                       tickFormatter={v => {
                         if (!isDate(v)) return v;
                         const d = new Date(v);
@@ -648,21 +667,30 @@ export default function App() {
                         animationDuration={800} radius={[6, 6, 0, 0]} />
                     ))}
                   </BarChart>
-                )}
-                {chartType === "pie" && (
+                </ResponsiveContainer>
+              )}
+
+              {chartType === "pie" && (
+                <ResponsiveContainer width="100%" height={350}>
                   <PieChart>
                     <Tooltip /><Legend />
-                    <Pie data={msg.data} dataKey={numericKeys[0]} nameKey={categoryKey}
-                      outerRadius={120} label animationDuration={800} />
+                    <Pie
+                      data={msg.data}
+                      dataKey={numericKeys[0]}
+                      nameKey={categoryKey}
+                      outerRadius={120}
+                      label
+                      animationDuration={800}
+                      fill={BAR_COLORS[0]}
+                    />
                   </PieChart>
-                )}
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              )}
             </div>
           )}
-        </div>
-      );
-    }
-
+        </div>  
+       );      
+      }   
     return null;
   };
 
