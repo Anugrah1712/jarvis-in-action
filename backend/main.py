@@ -74,6 +74,7 @@ GENIE_SPACES = {
     "seo":"01f1274b63951cffb26bb97d1a127a3e",
     "li":"01f1317a08311f7cab9a2a72df316edd",
     "bl":"01f10c99e14f1d01a921cb2185b968d1",
+    "ac":"01f143bf85cd1b0782b70b53deb122da",
 }
 
 BUSINESS_NAMES = {
@@ -93,6 +94,7 @@ BUSINESS_NAMES = {
     "seo":"SEARCH ENGINE OPTIMIZATION",
     "li":"LIFE INSURANCE",
     "bl":"BUSINESS LOAN",
+    "ac":"APPCARD PERSONALISATION",
 }
 
 BUSINESS_SCOPES = {
@@ -112,6 +114,7 @@ BUSINESS_SCOPES = {
     "seo":"For Search Engine Optimization(SEO),Chatbot is currently integrated with web clickstream data, Sitemap based Live URLs data along with tag1 to tag6 mapping and URL wise clicks and impressions data from Google Search console(GSC).",
     "li":"For Life Insurance,Chatbot is currently integrated with D360 clickstream, , current customer split, app/web consent mart tables and DP disbursals.",
     "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, current offer base, GST base , current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master",
+    "ac":"For AppCard Personalisation, Chatbot is currently integrated with end-to-end analysis of app card banner personalization, from impression to disbursement. It also includes customer profile attributes such as city, gender, age segment, and CIBIL band",
 }
 
 # ==============================
