@@ -75,6 +75,7 @@ GENIE_SPACES = {
     "li":"01f1317a08311f7cab9a2a72df316edd",
     "bl":"01f10c99e14f1d01a921cb2185b968d1",
     "ac":"01f143bf85cd1b0782b70b53deb122da",
+    "fps":"01f141fb6633190d85f3ae9045e32e37",
 }
 
 BUSINESS_NAMES = {
@@ -95,6 +96,7 @@ BUSINESS_NAMES = {
     "li":"LIFE INSURANCE",
     "bl":"BUSINESS LOAN",
     "ac":"APPCARD PERSONALISATION",
+    "fps":"FPS N1"
 }
 
 BUSINESS_SCOPES = {
@@ -115,6 +117,7 @@ BUSINESS_SCOPES = {
     "li":"For Life Insurance,Chatbot is currently integrated with D360 clickstream, , current customer split, app/web consent mart tables and DP disbursals.",
     "bl":"For Business Loan, Chatbot is currently integrated with D360 clickstream, current offer base, GST base , current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master",
     "ac":"For AppCard Personalisation, Chatbot is currently integrated with end-to-end analysis of app card banner personalization, from impression to disbursement. It also includes customer profile attributes such as city, gender, age segment, and CIBIL band",
+    "fps":"For FPS N1, Chatbot can answer user-level icon sequence queries, provides sequence reasoning, and analyzes  FPS icon click trends"
 }
 
 # ==============================
