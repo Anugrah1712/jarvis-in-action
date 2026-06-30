@@ -78,7 +78,8 @@ GENIE_SPACES = {
     "fps":"01f141fb6633190d85f3ae9045e32e37",
     "ub2b":"01f15b20b2981be89a1030db729a01b0",
     "las":"01f15816bc981fb8b06dcb8288ac0775",
-    "prof":"01f12907da9518ffb2fef46977dfaf59"
+    "prof":"01f12907da9518ffb2fef46977dfaf59",
+    "fd":"01f1739986d315279f762eef1ec52d09",
 }
 
 BUSINESS_NAMES = {
@@ -102,7 +103,8 @@ BUSINESS_NAMES = {
     "fps":"FPS N1",
     "ub2b":"URBAN - B2B",
     "las":"LOAN AGAINST SECURITIES",
-    "prof":"PROFESSIONAL LOAN"
+    "prof":"PROFESSIONAL LOAN",
+    "fd":"FIXED DEPOSIT",
 }
 
 BUSINESS_SCOPES = {
@@ -126,8 +128,8 @@ BUSINESS_SCOPES = {
     "fps":"For FPS N1,Chatbot can answer user-level icon sequence queries, provides sequence reasoning, and analyzes  FPS icon click trends",
     "ub2b":"For Urban B2B,Chatbot is currently integrated with Offer Pool Base, Customer Segmentation and Business Analytics, Chatbot is currently integrated with App Offer Pool Base, customer segment analysis, Organic & In-Organic click and user count tracking, Organic & In-Organic click to Bmall landed event conversion, Urban Business TRUE customer analysis, O2O disbursal tracking by city, state, product and brand, offer pool-wise customer insights, geographic analysis, EMI Card performance, and product-related analytics to monitor customer behavior, engagement, conversion trends, and business performance metrics.",
     "las":"For LAS Analytics,Chatbot is currently integrated with Clickstream Journey (LAS, LAMF, LAIP), Leads, Disbursement, App Engagement (signup base, active/uninstalled users), funnel conversion (Traffic, PDP View, PDP Clicked, Form 1 Submit, Qualified Lead), entrypoint attribution, entry-to-PDP gap tracking, reverse disbursement footprint, MOM trend analysis, cross-product journey mapping, and offline disbursement identification to track end-to-end customer journey, funnel health, and business conversion trends.",
-    "prof":"For Professional Loan,Chatbot is currently integrated with D360 clickstream, current offer base, current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master."
-
+    "prof":"For Professional Loan,Chatbot is currently integrated with D360 clickstream, current offer base, current customer split, bureau, Form1_SFDC leads, MAU, DRR Lead master, DRR disbursal master.",
+    "fd":"For Fixed deposit, Chatbot is currently integrated with D360 clickstream,  current customer split, app tables, MAU metrics, DP disbursals, and overall disbursals data",
 }
 
 # ==============================
